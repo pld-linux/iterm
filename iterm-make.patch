@@ -1,0 +1,67 @@
+--- iterm-0.5/unix/Xaw/lib/Makefile.am.orig	2002-12-17 08:30:02.000000000 +0100
++++ iterm-0.5/unix/Xaw/lib/Makefile.am	2004-02-21 20:23:59.134114864 +0100
+@@ -2,7 +2,8 @@
+ 
+ libXiterm_la_SOURCES =  Iterm.c Iterm.h ItermP.h VT.c VT.h VTP.h VTScreenView.c VTScreenView.h actions.c actions.h config.h scrollbar.c scrollbar.h xim.c xim.h
+ 
+-CPPFLAGS        = -I$(includedir) -I$(top_srcdir)/include -DBIDI
++CPPFLAGS        = -I$(includedir) -I$(top_srcdir)/include -I../../../lib/include -DBIDI
++libXiterm_la_LIBADD = ../../../lib/src/libiterm.la @X_LIBS@ -lX11 -lXmu -lXt -lXaw
+ 
+ libXiterm_la_LDFLAGS     = -version-info 1:0:0
+ 
+--- iterm-0.5/unix/Xaw/src/Makefile.am.orig	2002-12-17 08:38:30.000000000 +0100
++++ iterm-0.5/unix/Xaw/src/Makefile.am	2004-02-21 20:25:22.344464968 +0100
+@@ -1,6 +1,6 @@
+ bin_PROGRAMS	= xiterm
+ 
+-xiterm_LDADD	= -L$(libdir) @X_LIBS@ -lX11 -lXmu -lXt -lXaw -literm -lXiterm
++xiterm_LDADD	= -L$(libdir) @X_LIBS@ -lX11 -lXmu -lXt -lXaw ../../../lib/src/libiterm.la ../lib/libXiterm.la
+ xiterm_SOURCES	= popup_menu.c popup_menu.h  xiterm.c
+ 
+-CPPFLAGS        = -I$(includedir)
++CPPFLAGS        = -I$(includedir) -I../../../lib/include -I../lib
+--- iterm-0.5/unix/fbiterm/src/Makefile.am.orig	2002-12-17 08:39:43.000000000 +0100
++++ iterm-0.5/unix/fbiterm/src/Makefile.am	2004-02-21 20:26:21.282505024 +0100
+@@ -15,9 +15,9 @@
+ 	vt.c VTScreenView.c fbiterm.h palette.h VTScreenView.h
+ 
+ fbiterm_LDADD = \
+-	-L$(libdir) @X_LIBS@ -lXfont -literm
++	-L$(libdir) @X_LIBS@ ../../../lib/src/libiterm.la -lXfont -lfreetype -lm
+ 
+-CFLAGS = -I$(includedir) @X_CFLAGS@ -I$(top_srcdir)/include -I/usr/local/include $(EXTRA_CFLAGS)
++CFLAGS = -I$(includedir) @X_CFLAGS@ -I$(top_srcdir)/include -I../../../lib/include $(EXTRA_CFLAGS)
+ 
+ install-exec-hook:
+ 	chmod u+s $(DESTDIR)$(bindir)/fbiterm
+--- iterm-0.5/unix/Xaw/src/configure.in.orig	2002-11-01 08:38:49.000000000 +0100
++++ iterm-0.5/unix/Xaw/src/configure.in	2004-02-21 20:34:30.428143584 +0100
+@@ -6,6 +6,7 @@
+ 
+ # Checks for programs.
+ AC_PROG_CC
++AC_PROG_LIBTOOL
+ 
+ # Checks for libraries.
+ # Solaris needs to link extra library for socket
+--- iterm-0.5/unix/fbiterm/configure.in.orig	2002-11-01 08:39:27.000000000 +0100
++++ iterm-0.5/unix/fbiterm/configure.in	2004-02-21 20:46:30.547668776 +0100
+@@ -7,6 +7,7 @@
+ #################################################################
+ # Checks for programs.
+ AC_PROG_CC
++AC_PROG_LIBTOOL
+ AC_PROG_INSTALL
+ 
+ #################################################################
+--- iterm-0.5/unix/Xaw/lib/configure.in.orig	2002-11-01 08:37:50.000000000 +0100
++++ iterm-0.5/unix/Xaw/lib/configure.in	2004-02-21 21:01:46.093484656 +0100
+@@ -16,6 +16,7 @@
+ 
+ # Checks for header files.
+ AC_PATH_X
++AC_PATH_XTRA
+ AC_HEADER_STDC
+ AC_CHECK_HEADERS([stdlib.h])
+ 
