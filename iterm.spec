@@ -15,7 +15,7 @@ BuildRequires:	XFree86-devel
 BuildRequires:	autoconf >= 2.53
 BuildRequires:	automake
 BuildRequires:	fribidi-devel
-BuildRequires:	gtk+2-devel >= 2.0.0
+BuildRequires:	gtk+2-devel >= 1:2.0.0
 BuildRequires:	libtool >= 1:1.4.2-9
 BuildRequires:	utempter-devel
 # currently %{_datadir}/terminfo/i dir belongs to terminfo
