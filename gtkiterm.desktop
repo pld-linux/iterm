@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=GtkITerm
+Comment=GTK+ version of iterm implementation
+Comment[pl]=Wersja GTK+ implementacji iterm
+Exec=gtkiterm
+Icon=gtkiterm.png
+Terminal=false
+Type=Application
+Encoding=UTF-8
+Categories=TerminalEmulator;
+# vi: encoding=utf-8
