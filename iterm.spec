@@ -2,11 +2,13 @@ Summary:	Internationalized Terminal Emulator Framework
 Summary(pl):	Szkielet dla umiêdzynarodowionego emulatora terminala
 Name:		iterm
 Version:	0.5
-Release:	1
+Release:	2
 License:	Common Public License v0.5
 Group:		Applications
 Source0:	http://www.doc.ic.ac.uk/~mbt99/Y/src/%{name}-%{version}-mbt.tar.gz
 # Source0-md5:	e13a6273319e041fcf3b4800581ef62c
+Source1:	gtkiterm.desktop
+Source2:	xiterm.desktop
 Patch0:		%{name}-make.patch
 URL:		http://www-124.ibm.com/linux/projects/iterm/
 BuildRequires:	XFree86-devel
@@ -228,6 +230,7 @@ cd ../gtk
 
 %install
 rm -rf $RPM_BUILD_ROOT
+install -d $RPM_BUILD_ROOT{%{_appdefsdir}/ja,%{_datadir}/terminfo,%{_desktopdir}}
 
 %{__make} -C lib install \
 	DESTDIR=$RPM_BUILD_ROOT
@@ -242,13 +245,12 @@ rm -rf $RPM_BUILD_ROOT
 	DESTDIR=$RPM_BUILD_ROOT
 
 install unix/gtk/src/gtkiterm $RPM_BUILD_ROOT%{_bindir}
-
-install -d $RPM_BUILD_ROOT%{_appdefsdir}/ja
 install unix/Xaw/src/XIterm $RPM_BUILD_ROOT%{_appdefsdir}
 install unix/Xaw/src/XIterm.ja $RPM_BUILD_ROOT%{_appdefsdir}/ja/XIterm
 
-install -d $RPM_BUILD_ROOT%{_datadir}/terminfo
 tic -o $RPM_BUILD_ROOT%{_datadir}/terminfo unix/terminfo/iterm.terminfo
+
+install %{SOURCE1} %{SOURCE2} $RPM_BUILD_ROOT%{_desktopdir}
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -309,6 +311,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %{_bindir}/xiterm
 %{_appdefsdir}/XIterm
 %lang(ja) %{_appdefsdir}/ja/XIterm
+%{_desktopdir}/xiterm.desktop
 
 %files fb
 %defattr(644,root,root,755)
@@ -321,3 +324,4 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %doc unix/gtk/README
 %attr(755,root,root) %{_bindir}/gtkiterm
+%{_desktopdir}/gtkiterm.desktop
