@@ -7,5 +7,5 @@ Icon=gtkiterm.png
 Terminal=false
 Type=Application
 Encoding=UTF-8
-Categories=TerminalEmulator;
+Categories=GTK;TerminalEmulator;
 # vi: encoding=utf-8
