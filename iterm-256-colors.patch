@@ -1,0 +1,1269 @@
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/lib/src/screen.c iterm-0.5.new/lib/src/screen.c
+--- iterm-0.5/lib/src/screen.c	2002-12-02 09:15:49.000000000 +0100
++++ iterm-0.5.new/lib/src/screen.c	2006-02-09 13:55:45.668691500 +0100
+@@ -2434,7 +2434,13 @@
+       case 35: /* magenta */
+       case 36: /* cyan */
+       case 37: /* white */
+-          screen->current_attr.foreground = params[i] - 29; 
++          screen->current_attr.foreground = params[i] - 30; 
++          break;
++      case 38: /* foreground 256 */
++          if ((i + 2) < n_params && params[i + 1] == 5) {
++            screen->current_attr.foreground = params[i + 2];
++            i += 2;
++          }
+           break;
+       case 39: /* default color */
+           screen->current_attr.foreground = 0;
+@@ -2447,7 +2453,13 @@
+       case 45: /* magenta background */
+       case 46: /* cyan background */
+       case 47: /* white background */
+-          screen->current_attr.background = params[i] - 39;
++          screen->current_attr.background = params[i] - 40;
++          break;
++      case 48: /* background 256 */
++          if ((i + 2) < n_params && params[i + 1] == 5) {
++            screen->current_attr.background = params[i + 2];
++            i += 2;
++          }
+           break;
+       case 49: /* default color */
+           screen->current_attr.background = 0;
+@@ -2696,6 +2708,7 @@
+   VT100_register_sequence(vt100,"\033[l", GROUND_STATE, VTScreen_RST,screen);
+   VT100_register_sequence(vt100,"\033[m", GROUND_STATE, VTScreen_SGR,screen);
+   VT100_register_sequence(vt100,"\033[r",GROUND_STATE,VTScreen_DECSTBM,screen);
++
+ #ifdef BIDI
+   VT100_register_sequence(vt100,"\033[[",GROUND_STATE,VTScreen_SRS,screen);
+ #endif
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/lib/src/screen_internal.h iterm-0.5.new/lib/src/screen_internal.h
+--- iterm-0.5/lib/src/screen_internal.h	2002-12-02 09:10:33.000000000 +0100
++++ iterm-0.5.new/lib/src/screen_internal.h	2006-02-09 09:11:22.887163000 +0100
+@@ -119,9 +119,9 @@
+         /**< current underlined text attribute state */
+     unsigned int blink:1;
+         /**< current blink text attribute state*/
+-    unsigned int foreground:4;
++    unsigned int foreground;
+         /**< current foreground color attribute state */
+-    unsigned int background:4;
++    unsigned int background;
+         /**< current background color attribute state */
+   } current_attr;
+       /**< current text rendition flags */
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/lib/src/screen_row.c iterm-0.5.new/lib/src/screen_row.c
+--- iterm-0.5/lib/src/screen_row.c	2002-12-02 10:50:05.000000000 +0100
++++ iterm-0.5.new/lib/src/screen_row.c	2006-02-09 09:11:22.887163000 +0100
+@@ -55,8 +55,8 @@
+   if(blink) (attr)[ATTRIBUTES]|=BLINK; \
+   if(inverse)(attr)[ATTRIBUTES]|=INVERSE; \
+   if(underline)(attr)[ATTRIBUTES]|=UNDERLINE; \
+-  (attr)[COLOR]|=foreground; \
+-  (attr)[COLOR]|=(background<<4); \
++  (attr)[COLOR]|= foreground; \
++  (attr)[BACKGROUND]|=background; \
+   (attr)[CHARSET]|=charset; \
+ } while(0)
+ 
+@@ -255,7 +255,7 @@
+ static void RowBuffer_simple_replace_space(Row *row, int col)
+ {
+   row->buffer.value[GET_INDEX(row,col)] = ' ';
+-  row->buffer.attrs[col][0] = row->buffer.attrs[col][1] = row->buffer.attrs[col][3] = 0;
++  row->buffer.attrs[col][0] = row->buffer.attrs[col][1] = row->buffer.attrs[col][3] = row->buffer.attrs[col][4] = 0;
+   row->buffer.attrs[col][2] = ASCII; /* ASCII */
+   Row_set_updated(row,col,(col+1));
+ }
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/lib/src/screen_row.h iterm-0.5.new/lib/src/screen_row.h
+--- iterm-0.5/lib/src/screen_row.h	2002-11-12 10:39:35.000000000 +0100
++++ iterm-0.5.new/lib/src/screen_row.h	2006-02-09 09:11:22.887163000 +0100
+@@ -11,16 +11,17 @@
+ #define __SCREEN_ROW_H__
+ 
+ #include "mbchar.h"
+-typedef unsigned char CellAttributes[4];
++typedef unsigned char CellAttributes[5];
+ /**<
+-       attr[3]   attr[2] attr[1] attr[0]
+-   |num_combined|charset| color | attrs |
++       attr[4]    attr[3]     attr[2]     attr[1]  attr[0]
++   |background ||num_combined|charset| foreground | attrs |
+  */
+ enum {
+     ATTRIBUTES = 0,
+     COLOR = 1,
+     CHARSET = 2,
+-    NUM_COMBINED = 3
++    NUM_COMBINED = 3,
++    BACKGROUND = 4
+ };
+ 
+ enum {
+@@ -103,15 +104,16 @@
+  (Row_is_char_drawn(row1,col1) && Row_is_char_drawn(row2,col2) && \
+   row1->buffer.attrs[col1][0] == row2->buffer.attrs[col2][0] && \
+   row1->buffer.attrs[col1][1] == row2->buffer.attrs[col2][1] && \
+-  row1->buffer.attrs[col1][2] == row2->buffer.attrs[col2][2] )
++  row1->buffer.attrs[col1][2] == row2->buffer.attrs[col2][2] && \
++  row1->buffer.attrs[col1][4] == row2->buffer.attrs[col2][4])
+ 
+ #define Row_is_bold(row, col) ((row)->buffer.attrs[(col)][0]&BOLD)
+ #define Row_is_blink(row, col) ((row)->buffer.attrs[(col)][0]&BLINK)
+ #define Row_is_inverse(row, col) ( (((row)->buffer.attrs[(col)][0]&INVERSE) == INVERSE) ^ (((row)->buffer.attrs[(col)][0]&SELECTED) == SELECTED) )
+ #define Row_is_underline(row, col) ((row)->buffer.attrs[(col)][0]&UNDERLINE)
+ 
+-#define Row_get_foreground(row,col) (((row)->buffer.attrs[(col)][1])&FOREGROUND_MASK)
+-#define Row_get_background(row,col) ((((row)->buffer.attrs[(col)][1])&BACKGROUND_MASK) >> 4)
++#define Row_get_foreground(row,col) (((row)->buffer.attrs[(col)][1]))
++#define Row_get_background(row,col) (((row)->buffer.attrs[(col)][4]))
+ 
+ #define Row_get_charset(row,col) (((row)->buffer.attrs[(col)][2])&0xFF)
+ #define Row_get_num_combined(row,col) (((row)->buffer.attrs[(col)][3])&0xFF)
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/unix/fbiterm/src/fb.c iterm-0.5.new/unix/fbiterm/src/fb.c
+--- iterm-0.5/unix/fbiterm/src/fb.c	2002-09-13 12:55:53.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb.c	2006-02-09 09:31:27.214428750 +0100
+@@ -35,6 +35,12 @@
+    fb_true32_set_rendition, fb_true32_draw_text},
+ };
+ 
++static __u16 red[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x808, 0x1212, 0x1c1c, 0x2626, 0x3030, 0x3a3a, 0x4444, 0x4e4e, 0x5858, 0x6262, 0x6c6c, 0x7676, 0x8080, 0x8a8a, 0x9494, 0x9e9e, 0xa8a8, 0xb2b2, 0xbcbc, 0xc6c6, 0xd0d0, 0xdada, 0xe4e4, 0xeeee, };
++static __u16 green[] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x5f5f, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0x8787, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xafaf, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xd7d7, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0x808, 0x1212, 0x1c1c, 0x2626, 0x3030, 0x3a3a, 0x4444, 0x4e4e, 0x5858, 0x6262, 0x6c6c, 0x7676, 0x8080, 0x8a8a, 0x9494, 0x9e9e, 0xa8a8, 0xb2b2, 0xbcbc, 0xc6c6, 0xd0d0, 0xdada, 0xe4e4, 0xeeee, };
++static __u16 blue[] = {0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x0, 0x5f5f, 0x8787, 0xafaf, 0xd7d7, 0xffff, 0x808, 0x1212, 0x1c1c, 0x2626, 0x3030, 0x3a3a, 0x4444, 0x4e4e, 0x5858, 0x6262, 0x6c6c, 0x7676, 0x8080, 0x8a8a, 0x9494, 0x9e9e, 0xa8a8, 0xb2b2, 0xbcbc, 0xc6c6, 0xd0d0, 0xdada, 0xe4e4, 0xeeee, };
++static __u16 transp[240];
++static struct fb_cmap cmap;
++
+ void
+ fb_end ()
+ {
+@@ -96,6 +102,13 @@
+ 	  return -1;
+ 	}
+     }
++  cmap.start = 16;
++  cmap.len = 240;
++  cmap.red = red;
++  cmap.green = green;
++  cmap.blue = blue;
++  cmap.transp = transp;
++  ioctl(pIterm->fb->fbfp, FBIOPUTCMAP, &cmap);
+ 
+   /* set framebuffer params */
+   pIterm->fb->line_length = fscinfo.line_length;
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/unix/fbiterm/src/fb_true8.c iterm-0.5.new/unix/fbiterm/src/fb_true8.c
+--- iterm-0.5/unix/fbiterm/src/fb_true8.c	2002-08-13 09:10:46.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb_true8.c	2006-02-09 13:54:47.337046000 +0100
+@@ -47,26 +47,22 @@
+   if (pIterm->lock)
+     return;
+ 
+-  if (foreground == 0)
+-    fgcmap = 7;			/* white */
+-  else
++  if (!foreground && !background)
+     {
+-      fgcmap = foreground - 1;
+-      if (fgcmap > 0 && fgcmap < 7)
+-	fgcmap = (fgcmap == 0x02
+-		  || fgcmap ==
+-		  0x05) ? fgcmap : (fgcmap & 0x02) | (~fgcmap & 0x05);
++      fgcmap = 7;			/* white */
++      bgcmap = 0;     /* black */
+     }
+-
+-  if (background == 0)
+-    bgcmap = 0;			/* black */
+   else
+     {
+-      bgcmap = background - 1;
++      fgcmap = foreground;
++      if (fgcmap > 0 && fgcmap < 7)
++        {
++          fgcmap = (fgcmap == 0x02 || fgcmap == 0x05) ? fgcmap : (fgcmap & 0x02) | (~fgcmap & 0x05);
++          if (bold) fgcmap | 0x08;
++        }
++      bgcmap = background;
+       if (bgcmap > 0 && bgcmap < 7)
+-	bgcmap = (bgcmap == 0x02
+-		  || bgcmap ==
+-		  0x05) ? bgcmap : (bgcmap & 0x02) | (~bgcmap & 0x05);
++	      bgcmap = (bgcmap == 0x02 || bgcmap == 0x05) ? bgcmap : (bgcmap & 0x02) | (~bgcmap & 0x05);
+     }
+ 
+   if (inverse)
+@@ -107,15 +103,17 @@
+ 	    {
+ 	      if (c & 0x80000000)
+ 		{
++#if 0
+ 		  if (pIterm->bold)
+ 		    *(dst8) = (char) fgcmap | 0x08;
+ 		  else
+-		    {
++		    {		    
+ 		      if (getenv ("ITERM_BOLD") != NULL)
+ 			*(dst8) = (char) fgcmap | 0x08;
+ 		      else
++#endif
+ 			*(dst8) = (char) fgcmap;
+-		    }
++/*		    } */
+ 		}
+ 	      else
+ 		*(dst8) = (char) bgcmap;
+diff -Nru -x '*o' -x '*P' -x '*.m4' -x '*[01]' -x 'request*' -x config.guess -x 'config.h*' -x '*.log' iterm-0.5/unix/fbiterm/src/term.c iterm-0.5.new/unix/fbiterm/src/term.c
+--- iterm-0.5/unix/fbiterm/src/term.c	2002-10-24 14:44:01.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/term.c	2006-02-09 09:11:22.883162750 +0100
+@@ -111,7 +111,7 @@
+   char *tty_name;
+   int console_fd = -1;
+   int display_mode;
+-
++#if 0
+   if( ((console_fd = open("/dev/console",O_RDWR)) < 0) &&
+       ((console_fd = open("/dev/console",O_RDONLY)) < 0) )
+   {
+@@ -133,7 +133,7 @@
+     }
+     close(console_fd);
+   }
+-
++#endif
+ 
+   if (!isatty(STDIN_FILENO))
+   {
+diff -Nru -x '*.o' -x '*0' -x '*1' -x 'config*' iterm-0.5/unix/Xaw/lib.orig/VT.c iterm-0.5/unix/Xaw/lib/VT.c
+--- iterm-0.5/unix/Xaw/lib.orig/VT.c	2002-12-17 02:48:46.000000000 +0100
++++ iterm-0.5/unix/Xaw/lib/VT.c	2006-02-09 16:11:52.987117000 +0100
+@@ -140,7 +140,489 @@
+    offset(textcolor[14]),XtRString, "cyan"},
+   {XtNtextColor15, XtCTextColor15, XtRPixel, sizeof(Pixel),
+    offset(textcolor[15]),XtRString, "white"},
+-  {XtNforeground, XtCForeground, XtRPixel, sizeof(Pixel),
++   
++   {XtNtextColor16, XtCTextColor16, XtRPixel, sizeof(Pixel),
++   offset(textcolor[16]),XtRString, "rgb:00/00/00"},
++   {XtNtextColor17, XtCTextColor17, XtRPixel, sizeof(Pixel),
++   offset(textcolor[17]),XtRString, "rgb:00/00/2a"},
++   {XtNtextColor18, XtCTextColor18, XtRPixel, sizeof(Pixel),
++   offset(textcolor[18]),XtRString, "rgb:00/00/55"},
++   {XtNtextColor19, XtCTextColor19, XtRPixel, sizeof(Pixel),
++   offset(textcolor[19]),XtRString, "rgb:00/00/7f"},
++   {XtNtextColor20, XtCTextColor20, XtRPixel, sizeof(Pixel),
++   offset(textcolor[20]),XtRString, "rgb:00/00/aa"},
++   {XtNtextColor21, XtCTextColor21, XtRPixel, sizeof(Pixel),
++   offset(textcolor[21]),XtRString, "rgb:00/00/d4"},
++   {XtNtextColor22, XtCTextColor22, XtRPixel, sizeof(Pixel),
++   offset(textcolor[22]),XtRString, "rgb:00/2a/00"},
++   {XtNtextColor23, XtCTextColor23, XtRPixel, sizeof(Pixel),
++   offset(textcolor[23]),XtRString, "rgb:00/2a/2a"},
++   {XtNtextColor24, XtCTextColor24, XtRPixel, sizeof(Pixel),
++   offset(textcolor[24]),XtRString, "rgb:00/2a/55"},
++   {XtNtextColor25, XtCTextColor25, XtRPixel, sizeof(Pixel),
++   offset(textcolor[25]),XtRString, "rgb:00/2a/7f"},
++   {XtNtextColor26, XtCTextColor26, XtRPixel, sizeof(Pixel),
++   offset(textcolor[26]),XtRString, "rgb:00/2a/aa"},
++   {XtNtextColor27, XtCTextColor27, XtRPixel, sizeof(Pixel),
++   offset(textcolor[27]),XtRString, "rgb:00/2a/d4"},
++   {XtNtextColor28, XtCTextColor28, XtRPixel, sizeof(Pixel),
++   offset(textcolor[28]),XtRString, "rgb:00/55/00"},
++   {XtNtextColor29, XtCTextColor29, XtRPixel, sizeof(Pixel),
++   offset(textcolor[29]),XtRString, "rgb:00/55/2a"},
++   {XtNtextColor30, XtCTextColor30, XtRPixel, sizeof(Pixel),
++   offset(textcolor[30]),XtRString, "rgb:00/55/55"},
++   {XtNtextColor31, XtCTextColor31, XtRPixel, sizeof(Pixel),
++   offset(textcolor[31]),XtRString, "rgb:00/55/7f"},
++   {XtNtextColor32, XtCTextColor32, XtRPixel, sizeof(Pixel),
++   offset(textcolor[32]),XtRString, "rgb:00/55/aa"},
++   {XtNtextColor33, XtCTextColor33, XtRPixel, sizeof(Pixel),
++   offset(textcolor[33]),XtRString, "rgb:00/55/d4"},
++   {XtNtextColor34, XtCTextColor34, XtRPixel, sizeof(Pixel),
++   offset(textcolor[34]),XtRString, "rgb:00/7f/00"},
++   {XtNtextColor35, XtCTextColor35, XtRPixel, sizeof(Pixel),
++   offset(textcolor[35]),XtRString, "rgb:00/7f/2a"},
++   {XtNtextColor36, XtCTextColor36, XtRPixel, sizeof(Pixel),
++   offset(textcolor[36]),XtRString, "rgb:00/7f/55"},
++   {XtNtextColor37, XtCTextColor37, XtRPixel, sizeof(Pixel),
++   offset(textcolor[37]),XtRString, "rgb:00/7f/7f"},
++   {XtNtextColor38, XtCTextColor38, XtRPixel, sizeof(Pixel),
++   offset(textcolor[38]),XtRString, "rgb:00/7f/aa"},
++   {XtNtextColor39, XtCTextColor39, XtRPixel, sizeof(Pixel),
++   offset(textcolor[39]),XtRString, "rgb:00/7f/d4"},
++   {XtNtextColor40, XtCTextColor40, XtRPixel, sizeof(Pixel),
++   offset(textcolor[40]),XtRString, "rgb:00/aa/00"},
++   {XtNtextColor41, XtCTextColor41, XtRPixel, sizeof(Pixel),
++   offset(textcolor[41]),XtRString, "rgb:00/aa/2a"},
++   {XtNtextColor42, XtCTextColor42, XtRPixel, sizeof(Pixel),
++   offset(textcolor[42]),XtRString, "rgb:00/aa/55"},
++   {XtNtextColor43, XtCTextColor43, XtRPixel, sizeof(Pixel),
++   offset(textcolor[43]),XtRString, "rgb:00/aa/7f"},
++   {XtNtextColor44, XtCTextColor44, XtRPixel, sizeof(Pixel),
++   offset(textcolor[44]),XtRString, "rgb:00/aa/aa"},
++   {XtNtextColor45, XtCTextColor45, XtRPixel, sizeof(Pixel),
++   offset(textcolor[45]),XtRString, "rgb:00/aa/d4"},
++   {XtNtextColor46, XtCTextColor46, XtRPixel, sizeof(Pixel),
++   offset(textcolor[46]),XtRString, "rgb:00/d4/00"},
++   {XtNtextColor47, XtCTextColor47, XtRPixel, sizeof(Pixel),
++   offset(textcolor[47]),XtRString, "rgb:00/d4/2a"},
++   {XtNtextColor48, XtCTextColor48, XtRPixel, sizeof(Pixel),
++   offset(textcolor[48]),XtRString, "rgb:00/d4/55"},
++   {XtNtextColor49, XtCTextColor49, XtRPixel, sizeof(Pixel),
++   offset(textcolor[49]),XtRString, "rgb:00/d4/7f"},
++   {XtNtextColor50, XtCTextColor50, XtRPixel, sizeof(Pixel),
++   offset(textcolor[50]),XtRString, "rgb:00/d4/aa"},
++   {XtNtextColor51, XtCTextColor51, XtRPixel, sizeof(Pixel),
++   offset(textcolor[51]),XtRString, "rgb:00/d4/d4"},
++   {XtNtextColor52, XtCTextColor52, XtRPixel, sizeof(Pixel),
++   offset(textcolor[52]),XtRString, "rgb:2a/00/00"},
++   {XtNtextColor53, XtCTextColor53, XtRPixel, sizeof(Pixel),
++   offset(textcolor[53]),XtRString, "rgb:2a/00/2a"},
++   {XtNtextColor54, XtCTextColor54, XtRPixel, sizeof(Pixel),
++   offset(textcolor[54]),XtRString, "rgb:2a/00/55"},
++   {XtNtextColor55, XtCTextColor55, XtRPixel, sizeof(Pixel),
++   offset(textcolor[55]),XtRString, "rgb:2a/00/7f"},
++   {XtNtextColor56, XtCTextColor56, XtRPixel, sizeof(Pixel),
++   offset(textcolor[56]),XtRString, "rgb:2a/00/aa"},
++   {XtNtextColor57, XtCTextColor57, XtRPixel, sizeof(Pixel),
++   offset(textcolor[57]),XtRString, "rgb:2a/00/d4"},
++   {XtNtextColor58, XtCTextColor58, XtRPixel, sizeof(Pixel),
++   offset(textcolor[58]),XtRString, "rgb:2a/2a/00"},
++   {XtNtextColor59, XtCTextColor59, XtRPixel, sizeof(Pixel),
++   offset(textcolor[59]),XtRString, "rgb:2a/2a/2a"},
++   {XtNtextColor60, XtCTextColor60, XtRPixel, sizeof(Pixel),
++   offset(textcolor[60]),XtRString, "rgb:2a/2a/55"},
++   {XtNtextColor61, XtCTextColor61, XtRPixel, sizeof(Pixel),
++   offset(textcolor[61]),XtRString, "rgb:2a/2a/7f"},
++   {XtNtextColor62, XtCTextColor62, XtRPixel, sizeof(Pixel),
++   offset(textcolor[62]),XtRString, "rgb:2a/2a/aa"},
++   {XtNtextColor63, XtCTextColor63, XtRPixel, sizeof(Pixel),
++   offset(textcolor[63]),XtRString, "rgb:2a/2a/d4"},
++   {XtNtextColor64, XtCTextColor64, XtRPixel, sizeof(Pixel),
++   offset(textcolor[64]),XtRString, "rgb:2a/55/00"},
++   {XtNtextColor65, XtCTextColor65, XtRPixel, sizeof(Pixel),
++   offset(textcolor[65]),XtRString, "rgb:2a/55/2a"},
++   {XtNtextColor66, XtCTextColor66, XtRPixel, sizeof(Pixel),
++   offset(textcolor[66]),XtRString, "rgb:2a/55/55"},
++   {XtNtextColor67, XtCTextColor67, XtRPixel, sizeof(Pixel),
++   offset(textcolor[67]),XtRString, "rgb:2a/55/7f"},
++   {XtNtextColor68, XtCTextColor68, XtRPixel, sizeof(Pixel),
++   offset(textcolor[68]),XtRString, "rgb:2a/55/aa"},
++   {XtNtextColor69, XtCTextColor69, XtRPixel, sizeof(Pixel),
++   offset(textcolor[69]),XtRString, "rgb:2a/55/d4"},
++   {XtNtextColor70, XtCTextColor70, XtRPixel, sizeof(Pixel),
++   offset(textcolor[70]),XtRString, "rgb:2a/7f/00"},
++   {XtNtextColor71, XtCTextColor71, XtRPixel, sizeof(Pixel),
++   offset(textcolor[71]),XtRString, "rgb:2a/7f/2a"},
++   {XtNtextColor72, XtCTextColor72, XtRPixel, sizeof(Pixel),
++   offset(textcolor[72]),XtRString, "rgb:2a/7f/55"},
++   {XtNtextColor73, XtCTextColor73, XtRPixel, sizeof(Pixel),
++   offset(textcolor[73]),XtRString, "rgb:2a/7f/7f"},
++   {XtNtextColor74, XtCTextColor74, XtRPixel, sizeof(Pixel),
++   offset(textcolor[74]),XtRString, "rgb:2a/7f/aa"},
++   {XtNtextColor75, XtCTextColor75, XtRPixel, sizeof(Pixel),
++   offset(textcolor[75]),XtRString, "rgb:2a/7f/d4"},
++   {XtNtextColor76, XtCTextColor76, XtRPixel, sizeof(Pixel),
++   offset(textcolor[76]),XtRString, "rgb:2a/aa/00"},
++   {XtNtextColor77, XtCTextColor77, XtRPixel, sizeof(Pixel),
++   offset(textcolor[77]),XtRString, "rgb:2a/aa/2a"},
++   {XtNtextColor78, XtCTextColor78, XtRPixel, sizeof(Pixel),
++   offset(textcolor[78]),XtRString, "rgb:2a/aa/55"},
++   {XtNtextColor79, XtCTextColor79, XtRPixel, sizeof(Pixel),
++   offset(textcolor[79]),XtRString, "rgb:2a/aa/7f"},
++   {XtNtextColor80, XtCTextColor80, XtRPixel, sizeof(Pixel),
++   offset(textcolor[80]),XtRString, "rgb:2a/aa/aa"},
++   {XtNtextColor81, XtCTextColor81, XtRPixel, sizeof(Pixel),
++   offset(textcolor[81]),XtRString, "rgb:2a/aa/d4"},
++   {XtNtextColor82, XtCTextColor82, XtRPixel, sizeof(Pixel),
++   offset(textcolor[82]),XtRString, "rgb:2a/d4/00"},
++   {XtNtextColor83, XtCTextColor83, XtRPixel, sizeof(Pixel),
++   offset(textcolor[83]),XtRString, "rgb:2a/d4/2a"},
++   {XtNtextColor84, XtCTextColor84, XtRPixel, sizeof(Pixel),
++   offset(textcolor[84]),XtRString, "rgb:2a/d4/55"},
++   {XtNtextColor85, XtCTextColor85, XtRPixel, sizeof(Pixel),
++   offset(textcolor[85]),XtRString, "rgb:2a/d4/7f"},
++   {XtNtextColor86, XtCTextColor86, XtRPixel, sizeof(Pixel),
++   offset(textcolor[86]),XtRString, "rgb:2a/d4/aa"},
++   {XtNtextColor87, XtCTextColor87, XtRPixel, sizeof(Pixel),
++   offset(textcolor[87]),XtRString, "rgb:2a/d4/d4"},
++   {XtNtextColor88, XtCTextColor88, XtRPixel, sizeof(Pixel),
++   offset(textcolor[88]),XtRString, "rgb:55/00/00"},
++   {XtNtextColor89, XtCTextColor89, XtRPixel, sizeof(Pixel),
++   offset(textcolor[89]),XtRString, "rgb:55/00/2a"},
++   {XtNtextColor90, XtCTextColor90, XtRPixel, sizeof(Pixel),
++   offset(textcolor[90]),XtRString, "rgb:55/00/55"},
++   {XtNtextColor91, XtCTextColor91, XtRPixel, sizeof(Pixel),
++   offset(textcolor[91]),XtRString, "rgb:55/00/7f"},
++   {XtNtextColor92, XtCTextColor92, XtRPixel, sizeof(Pixel),
++   offset(textcolor[92]),XtRString, "rgb:55/00/aa"},
++   {XtNtextColor93, XtCTextColor93, XtRPixel, sizeof(Pixel),
++   offset(textcolor[93]),XtRString, "rgb:55/00/d4"},
++   {XtNtextColor94, XtCTextColor94, XtRPixel, sizeof(Pixel),
++   offset(textcolor[94]),XtRString, "rgb:55/2a/00"},
++   {XtNtextColor95, XtCTextColor95, XtRPixel, sizeof(Pixel),
++   offset(textcolor[95]),XtRString, "rgb:55/2a/2a"},
++   {XtNtextColor96, XtCTextColor96, XtRPixel, sizeof(Pixel),
++   offset(textcolor[96]),XtRString, "rgb:55/2a/55"},
++   {XtNtextColor97, XtCTextColor97, XtRPixel, sizeof(Pixel),
++   offset(textcolor[97]),XtRString, "rgb:55/2a/7f"},
++   {XtNtextColor98, XtCTextColor98, XtRPixel, sizeof(Pixel),
++   offset(textcolor[98]),XtRString, "rgb:55/2a/aa"},
++   {XtNtextColor99, XtCTextColor99, XtRPixel, sizeof(Pixel),
++   offset(textcolor[99]),XtRString, "rgb:55/2a/d4"},
++   {XtNtextColor100, XtCTextColor100, XtRPixel, sizeof(Pixel),
++   offset(textcolor[100]),XtRString, "rgb:55/55/00"},
++   {XtNtextColor101, XtCTextColor101, XtRPixel, sizeof(Pixel),
++   offset(textcolor[101]),XtRString, "rgb:55/55/2a"},
++   {XtNtextColor102, XtCTextColor102, XtRPixel, sizeof(Pixel),
++   offset(textcolor[102]),XtRString, "rgb:55/55/55"},
++   {XtNtextColor103, XtCTextColor103, XtRPixel, sizeof(Pixel),
++   offset(textcolor[103]),XtRString, "rgb:55/55/7f"},
++   {XtNtextColor104, XtCTextColor104, XtRPixel, sizeof(Pixel),
++   offset(textcolor[104]),XtRString, "rgb:55/55/aa"},
++   {XtNtextColor105, XtCTextColor105, XtRPixel, sizeof(Pixel),
++   offset(textcolor[105]),XtRString, "rgb:55/55/d4"},
++   {XtNtextColor106, XtCTextColor106, XtRPixel, sizeof(Pixel),
++   offset(textcolor[106]),XtRString, "rgb:55/7f/00"},
++   {XtNtextColor107, XtCTextColor107, XtRPixel, sizeof(Pixel),
++   offset(textcolor[107]),XtRString, "rgb:55/7f/2a"},
++   {XtNtextColor108, XtCTextColor108, XtRPixel, sizeof(Pixel),
++   offset(textcolor[108]),XtRString, "rgb:55/7f/55"},
++   {XtNtextColor109, XtCTextColor109, XtRPixel, sizeof(Pixel),
++   offset(textcolor[109]),XtRString, "rgb:55/7f/7f"},
++   {XtNtextColor110, XtCTextColor110, XtRPixel, sizeof(Pixel),
++   offset(textcolor[110]),XtRString, "rgb:55/7f/aa"},
++   {XtNtextColor111, XtCTextColor111, XtRPixel, sizeof(Pixel),
++   offset(textcolor[111]),XtRString, "rgb:55/7f/d4"},
++   {XtNtextColor112, XtCTextColor112, XtRPixel, sizeof(Pixel),
++   offset(textcolor[112]),XtRString, "rgb:55/aa/00"},
++   {XtNtextColor113, XtCTextColor113, XtRPixel, sizeof(Pixel),
++   offset(textcolor[113]),XtRString, "rgb:55/aa/2a"},
++   {XtNtextColor114, XtCTextColor114, XtRPixel, sizeof(Pixel),
++   offset(textcolor[114]),XtRString, "rgb:55/aa/55"},
++   {XtNtextColor115, XtCTextColor115, XtRPixel, sizeof(Pixel),
++   offset(textcolor[115]),XtRString, "rgb:55/aa/7f"},
++   {XtNtextColor116, XtCTextColor116, XtRPixel, sizeof(Pixel),
++   offset(textcolor[116]),XtRString, "rgb:55/aa/aa"},
++   {XtNtextColor117, XtCTextColor117, XtRPixel, sizeof(Pixel),
++   offset(textcolor[117]),XtRString, "rgb:55/aa/d4"},
++   {XtNtextColor118, XtCTextColor118, XtRPixel, sizeof(Pixel),
++   offset(textcolor[118]),XtRString, "rgb:55/d4/00"},
++   {XtNtextColor119, XtCTextColor119, XtRPixel, sizeof(Pixel),
++   offset(textcolor[119]),XtRString, "rgb:55/d4/2a"},
++   {XtNtextColor120, XtCTextColor120, XtRPixel, sizeof(Pixel),
++   offset(textcolor[120]),XtRString, "rgb:55/d4/55"},
++   {XtNtextColor121, XtCTextColor121, XtRPixel, sizeof(Pixel),
++   offset(textcolor[121]),XtRString, "rgb:55/d4/7f"},
++   {XtNtextColor122, XtCTextColor122, XtRPixel, sizeof(Pixel),
++   offset(textcolor[122]),XtRString, "rgb:55/d4/aa"},
++   {XtNtextColor123, XtCTextColor123, XtRPixel, sizeof(Pixel),
++   offset(textcolor[123]),XtRString, "rgb:55/d4/d4"},
++   {XtNtextColor124, XtCTextColor124, XtRPixel, sizeof(Pixel),
++   offset(textcolor[124]),XtRString, "rgb:7f/00/00"},
++   {XtNtextColor125, XtCTextColor125, XtRPixel, sizeof(Pixel),
++   offset(textcolor[125]),XtRString, "rgb:7f/00/2a"},
++   {XtNtextColor126, XtCTextColor126, XtRPixel, sizeof(Pixel),
++   offset(textcolor[126]),XtRString, "rgb:7f/00/55"},
++   {XtNtextColor127, XtCTextColor127, XtRPixel, sizeof(Pixel),
++   offset(textcolor[127]),XtRString, "rgb:7f/00/7f"},
++   {XtNtextColor128, XtCTextColor128, XtRPixel, sizeof(Pixel),
++   offset(textcolor[128]),XtRString, "rgb:7f/00/aa"},
++   {XtNtextColor129, XtCTextColor129, XtRPixel, sizeof(Pixel),
++   offset(textcolor[129]),XtRString, "rgb:7f/00/d4"},
++   {XtNtextColor130, XtCTextColor130, XtRPixel, sizeof(Pixel),
++   offset(textcolor[130]),XtRString, "rgb:7f/2a/00"},
++   {XtNtextColor131, XtCTextColor131, XtRPixel, sizeof(Pixel),
++   offset(textcolor[131]),XtRString, "rgb:7f/2a/2a"},
++   {XtNtextColor132, XtCTextColor132, XtRPixel, sizeof(Pixel),
++   offset(textcolor[132]),XtRString, "rgb:7f/2a/55"},
++   {XtNtextColor133, XtCTextColor133, XtRPixel, sizeof(Pixel),
++   offset(textcolor[133]),XtRString, "rgb:7f/2a/7f"},
++   {XtNtextColor134, XtCTextColor134, XtRPixel, sizeof(Pixel),
++   offset(textcolor[134]),XtRString, "rgb:7f/2a/aa"},
++   {XtNtextColor135, XtCTextColor135, XtRPixel, sizeof(Pixel),
++   offset(textcolor[135]),XtRString, "rgb:7f/2a/d4"},
++   {XtNtextColor136, XtCTextColor136, XtRPixel, sizeof(Pixel),
++   offset(textcolor[136]),XtRString, "rgb:7f/55/00"},
++   {XtNtextColor137, XtCTextColor137, XtRPixel, sizeof(Pixel),
++   offset(textcolor[137]),XtRString, "rgb:7f/55/2a"},
++   {XtNtextColor138, XtCTextColor138, XtRPixel, sizeof(Pixel),
++   offset(textcolor[138]),XtRString, "rgb:7f/55/55"},
++   {XtNtextColor139, XtCTextColor139, XtRPixel, sizeof(Pixel),
++   offset(textcolor[139]),XtRString, "rgb:7f/55/7f"},
++   {XtNtextColor140, XtCTextColor140, XtRPixel, sizeof(Pixel),
++   offset(textcolor[140]),XtRString, "rgb:7f/55/aa"},
++   {XtNtextColor141, XtCTextColor141, XtRPixel, sizeof(Pixel),
++   offset(textcolor[141]),XtRString, "rgb:7f/55/d4"},
++   {XtNtextColor142, XtCTextColor142, XtRPixel, sizeof(Pixel),
++   offset(textcolor[142]),XtRString, "rgb:7f/7f/00"},
++   {XtNtextColor143, XtCTextColor143, XtRPixel, sizeof(Pixel),
++   offset(textcolor[143]),XtRString, "rgb:7f/7f/2a"},
++   {XtNtextColor144, XtCTextColor144, XtRPixel, sizeof(Pixel),
++   offset(textcolor[144]),XtRString, "rgb:7f/7f/55"},
++   {XtNtextColor145, XtCTextColor145, XtRPixel, sizeof(Pixel),
++   offset(textcolor[145]),XtRString, "rgb:7f/7f/7f"},
++   {XtNtextColor146, XtCTextColor146, XtRPixel, sizeof(Pixel),
++   offset(textcolor[146]),XtRString, "rgb:7f/7f/aa"},
++   {XtNtextColor147, XtCTextColor147, XtRPixel, sizeof(Pixel),
++   offset(textcolor[147]),XtRString, "rgb:7f/7f/d4"},
++   {XtNtextColor148, XtCTextColor148, XtRPixel, sizeof(Pixel),
++   offset(textcolor[148]),XtRString, "rgb:7f/aa/00"},
++   {XtNtextColor149, XtCTextColor149, XtRPixel, sizeof(Pixel),
++   offset(textcolor[149]),XtRString, "rgb:7f/aa/2a"},
++   {XtNtextColor150, XtCTextColor150, XtRPixel, sizeof(Pixel),
++   offset(textcolor[150]),XtRString, "rgb:7f/aa/55"},
++   {XtNtextColor151, XtCTextColor151, XtRPixel, sizeof(Pixel),
++   offset(textcolor[151]),XtRString, "rgb:7f/aa/7f"},
++   {XtNtextColor152, XtCTextColor152, XtRPixel, sizeof(Pixel),
++   offset(textcolor[152]),XtRString, "rgb:7f/aa/aa"},
++   {XtNtextColor153, XtCTextColor153, XtRPixel, sizeof(Pixel),
++   offset(textcolor[153]),XtRString, "rgb:7f/aa/d4"},
++   {XtNtextColor154, XtCTextColor154, XtRPixel, sizeof(Pixel),
++   offset(textcolor[154]),XtRString, "rgb:7f/d4/00"},
++   {XtNtextColor155, XtCTextColor155, XtRPixel, sizeof(Pixel),
++   offset(textcolor[155]),XtRString, "rgb:7f/d4/2a"},
++   {XtNtextColor156, XtCTextColor156, XtRPixel, sizeof(Pixel),
++   offset(textcolor[156]),XtRString, "rgb:7f/d4/55"},
++   {XtNtextColor157, XtCTextColor157, XtRPixel, sizeof(Pixel),
++   offset(textcolor[157]),XtRString, "rgb:7f/d4/7f"},
++   {XtNtextColor158, XtCTextColor158, XtRPixel, sizeof(Pixel),
++   offset(textcolor[158]),XtRString, "rgb:7f/d4/aa"},
++   {XtNtextColor159, XtCTextColor159, XtRPixel, sizeof(Pixel),
++   offset(textcolor[159]),XtRString, "rgb:7f/d4/d4"},
++   {XtNtextColor160, XtCTextColor160, XtRPixel, sizeof(Pixel),
++   offset(textcolor[160]),XtRString, "rgb:aa/00/00"},
++   {XtNtextColor161, XtCTextColor161, XtRPixel, sizeof(Pixel),
++   offset(textcolor[161]),XtRString, "rgb:aa/00/2a"},
++   {XtNtextColor162, XtCTextColor162, XtRPixel, sizeof(Pixel),
++   offset(textcolor[162]),XtRString, "rgb:aa/00/55"},
++   {XtNtextColor163, XtCTextColor163, XtRPixel, sizeof(Pixel),
++   offset(textcolor[163]),XtRString, "rgb:aa/00/7f"},
++   {XtNtextColor164, XtCTextColor164, XtRPixel, sizeof(Pixel),
++   offset(textcolor[164]),XtRString, "rgb:aa/00/aa"},
++   {XtNtextColor165, XtCTextColor165, XtRPixel, sizeof(Pixel),
++   offset(textcolor[165]),XtRString, "rgb:aa/00/d4"},
++   {XtNtextColor166, XtCTextColor166, XtRPixel, sizeof(Pixel),
++   offset(textcolor[166]),XtRString, "rgb:aa/2a/00"},
++   {XtNtextColor167, XtCTextColor167, XtRPixel, sizeof(Pixel),
++   offset(textcolor[167]),XtRString, "rgb:aa/2a/2a"},
++   {XtNtextColor168, XtCTextColor168, XtRPixel, sizeof(Pixel),
++   offset(textcolor[168]),XtRString, "rgb:aa/2a/55"},
++   {XtNtextColor169, XtCTextColor169, XtRPixel, sizeof(Pixel),
++   offset(textcolor[169]),XtRString, "rgb:aa/2a/7f"},
++   {XtNtextColor170, XtCTextColor170, XtRPixel, sizeof(Pixel),
++   offset(textcolor[170]),XtRString, "rgb:aa/2a/aa"},
++   {XtNtextColor171, XtCTextColor171, XtRPixel, sizeof(Pixel),
++   offset(textcolor[171]),XtRString, "rgb:aa/2a/d4"},
++   {XtNtextColor172, XtCTextColor172, XtRPixel, sizeof(Pixel),
++   offset(textcolor[172]),XtRString, "rgb:aa/55/00"},
++   {XtNtextColor173, XtCTextColor173, XtRPixel, sizeof(Pixel),
++   offset(textcolor[173]),XtRString, "rgb:aa/55/2a"},
++   {XtNtextColor174, XtCTextColor174, XtRPixel, sizeof(Pixel),
++   offset(textcolor[174]),XtRString, "rgb:aa/55/55"},
++   {XtNtextColor175, XtCTextColor175, XtRPixel, sizeof(Pixel),
++   offset(textcolor[175]),XtRString, "rgb:aa/55/7f"},
++   {XtNtextColor176, XtCTextColor176, XtRPixel, sizeof(Pixel),
++   offset(textcolor[176]),XtRString, "rgb:aa/55/aa"},
++   {XtNtextColor177, XtCTextColor177, XtRPixel, sizeof(Pixel),
++   offset(textcolor[177]),XtRString, "rgb:aa/55/d4"},
++   {XtNtextColor178, XtCTextColor178, XtRPixel, sizeof(Pixel),
++   offset(textcolor[178]),XtRString, "rgb:aa/7f/00"},
++   {XtNtextColor179, XtCTextColor179, XtRPixel, sizeof(Pixel),
++   offset(textcolor[179]),XtRString, "rgb:aa/7f/2a"},
++   {XtNtextColor180, XtCTextColor180, XtRPixel, sizeof(Pixel),
++   offset(textcolor[180]),XtRString, "rgb:aa/7f/55"},
++   {XtNtextColor181, XtCTextColor181, XtRPixel, sizeof(Pixel),
++   offset(textcolor[181]),XtRString, "rgb:aa/7f/7f"},
++   {XtNtextColor182, XtCTextColor182, XtRPixel, sizeof(Pixel),
++   offset(textcolor[182]),XtRString, "rgb:aa/7f/aa"},
++   {XtNtextColor183, XtCTextColor183, XtRPixel, sizeof(Pixel),
++   offset(textcolor[183]),XtRString, "rgb:aa/7f/d4"},
++   {XtNtextColor184, XtCTextColor184, XtRPixel, sizeof(Pixel),
++   offset(textcolor[184]),XtRString, "rgb:aa/aa/00"},
++   {XtNtextColor185, XtCTextColor185, XtRPixel, sizeof(Pixel),
++   offset(textcolor[185]),XtRString, "rgb:aa/aa/2a"},
++   {XtNtextColor186, XtCTextColor186, XtRPixel, sizeof(Pixel),
++   offset(textcolor[186]),XtRString, "rgb:aa/aa/55"},
++   {XtNtextColor187, XtCTextColor187, XtRPixel, sizeof(Pixel),
++   offset(textcolor[187]),XtRString, "rgb:aa/aa/7f"},
++   {XtNtextColor188, XtCTextColor188, XtRPixel, sizeof(Pixel),
++   offset(textcolor[188]),XtRString, "rgb:aa/aa/aa"},
++   {XtNtextColor189, XtCTextColor189, XtRPixel, sizeof(Pixel),
++   offset(textcolor[189]),XtRString, "rgb:aa/aa/d4"},
++   {XtNtextColor190, XtCTextColor190, XtRPixel, sizeof(Pixel),
++   offset(textcolor[190]),XtRString, "rgb:aa/d4/00"},
++   {XtNtextColor191, XtCTextColor191, XtRPixel, sizeof(Pixel),
++   offset(textcolor[191]),XtRString, "rgb:aa/d4/2a"},
++   {XtNtextColor192, XtCTextColor192, XtRPixel, sizeof(Pixel),
++   offset(textcolor[192]),XtRString, "rgb:aa/d4/55"},
++   {XtNtextColor193, XtCTextColor193, XtRPixel, sizeof(Pixel),
++   offset(textcolor[193]),XtRString, "rgb:aa/d4/7f"},
++   {XtNtextColor194, XtCTextColor194, XtRPixel, sizeof(Pixel),
++   offset(textcolor[194]),XtRString, "rgb:aa/d4/aa"},
++   {XtNtextColor195, XtCTextColor195, XtRPixel, sizeof(Pixel),
++   offset(textcolor[195]),XtRString, "rgb:aa/d4/d4"},
++   {XtNtextColor196, XtCTextColor196, XtRPixel, sizeof(Pixel),
++   offset(textcolor[196]),XtRString, "rgb:d4/00/00"},
++   {XtNtextColor197, XtCTextColor197, XtRPixel, sizeof(Pixel),
++   offset(textcolor[197]),XtRString, "rgb:d4/00/2a"},
++   {XtNtextColor198, XtCTextColor198, XtRPixel, sizeof(Pixel),
++   offset(textcolor[198]),XtRString, "rgb:d4/00/55"},
++   {XtNtextColor199, XtCTextColor199, XtRPixel, sizeof(Pixel),
++   offset(textcolor[199]),XtRString, "rgb:d4/00/7f"},
++   {XtNtextColor200, XtCTextColor200, XtRPixel, sizeof(Pixel),
++   offset(textcolor[200]),XtRString, "rgb:d4/00/aa"},
++   {XtNtextColor201, XtCTextColor201, XtRPixel, sizeof(Pixel),
++   offset(textcolor[201]),XtRString, "rgb:d4/00/d4"},
++   {XtNtextColor202, XtCTextColor202, XtRPixel, sizeof(Pixel),
++   offset(textcolor[202]),XtRString, "rgb:d4/2a/00"},
++   {XtNtextColor203, XtCTextColor203, XtRPixel, sizeof(Pixel),
++   offset(textcolor[203]),XtRString, "rgb:d4/2a/2a"},
++   {XtNtextColor204, XtCTextColor204, XtRPixel, sizeof(Pixel),
++   offset(textcolor[204]),XtRString, "rgb:d4/2a/55"},
++   {XtNtextColor205, XtCTextColor205, XtRPixel, sizeof(Pixel),
++   offset(textcolor[205]),XtRString, "rgb:d4/2a/7f"},
++   {XtNtextColor206, XtCTextColor206, XtRPixel, sizeof(Pixel),
++   offset(textcolor[206]),XtRString, "rgb:d4/2a/aa"},
++   {XtNtextColor207, XtCTextColor207, XtRPixel, sizeof(Pixel),
++   offset(textcolor[207]),XtRString, "rgb:d4/2a/d4"},
++   {XtNtextColor208, XtCTextColor208, XtRPixel, sizeof(Pixel),
++   offset(textcolor[208]),XtRString, "rgb:d4/55/00"},
++   {XtNtextColor209, XtCTextColor209, XtRPixel, sizeof(Pixel),
++   offset(textcolor[209]),XtRString, "rgb:d4/55/2a"},
++   {XtNtextColor210, XtCTextColor210, XtRPixel, sizeof(Pixel),
++   offset(textcolor[210]),XtRString, "rgb:d4/55/55"},
++   {XtNtextColor211, XtCTextColor211, XtRPixel, sizeof(Pixel),
++   offset(textcolor[211]),XtRString, "rgb:d4/55/7f"},
++   {XtNtextColor212, XtCTextColor212, XtRPixel, sizeof(Pixel),
++   offset(textcolor[212]),XtRString, "rgb:d4/55/aa"},
++   {XtNtextColor213, XtCTextColor213, XtRPixel, sizeof(Pixel),
++   offset(textcolor[213]),XtRString, "rgb:d4/55/d4"},
++   {XtNtextColor214, XtCTextColor214, XtRPixel, sizeof(Pixel),
++   offset(textcolor[214]),XtRString, "rgb:d4/7f/00"},
++   {XtNtextColor215, XtCTextColor215, XtRPixel, sizeof(Pixel),
++   offset(textcolor[215]),XtRString, "rgb:d4/7f/2a"},
++   {XtNtextColor216, XtCTextColor216, XtRPixel, sizeof(Pixel),
++   offset(textcolor[216]),XtRString, "rgb:d4/7f/55"},
++   {XtNtextColor217, XtCTextColor217, XtRPixel, sizeof(Pixel),
++   offset(textcolor[217]),XtRString, "rgb:d4/7f/7f"},
++   {XtNtextColor218, XtCTextColor218, XtRPixel, sizeof(Pixel),
++   offset(textcolor[218]),XtRString, "rgb:d4/7f/aa"},
++   {XtNtextColor219, XtCTextColor219, XtRPixel, sizeof(Pixel),
++   offset(textcolor[219]),XtRString, "rgb:d4/7f/d4"},
++   {XtNtextColor220, XtCTextColor220, XtRPixel, sizeof(Pixel),
++   offset(textcolor[220]),XtRString, "rgb:d4/aa/00"},
++   {XtNtextColor221, XtCTextColor221, XtRPixel, sizeof(Pixel),
++   offset(textcolor[221]),XtRString, "rgb:d4/aa/2a"},
++   {XtNtextColor222, XtCTextColor222, XtRPixel, sizeof(Pixel),
++   offset(textcolor[222]),XtRString, "rgb:d4/aa/55"},
++   {XtNtextColor223, XtCTextColor223, XtRPixel, sizeof(Pixel),
++   offset(textcolor[223]),XtRString, "rgb:d4/aa/7f"},
++   {XtNtextColor224, XtCTextColor224, XtRPixel, sizeof(Pixel),
++   offset(textcolor[224]),XtRString, "rgb:d4/aa/aa"},
++   {XtNtextColor225, XtCTextColor225, XtRPixel, sizeof(Pixel),
++   offset(textcolor[225]),XtRString, "rgb:d4/aa/d4"},
++   {XtNtextColor226, XtCTextColor226, XtRPixel, sizeof(Pixel),
++   offset(textcolor[226]),XtRString, "rgb:d4/d4/00"},
++   {XtNtextColor227, XtCTextColor227, XtRPixel, sizeof(Pixel),
++   offset(textcolor[227]),XtRString, "rgb:d4/d4/2a"},
++   {XtNtextColor228, XtCTextColor228, XtRPixel, sizeof(Pixel),
++   offset(textcolor[228]),XtRString, "rgb:d4/d4/55"},
++   {XtNtextColor229, XtCTextColor229, XtRPixel, sizeof(Pixel),
++   offset(textcolor[229]),XtRString, "rgb:d4/d4/7f"},
++   {XtNtextColor230, XtCTextColor230, XtRPixel, sizeof(Pixel),
++   offset(textcolor[230]),XtRString, "rgb:d4/d4/aa"},
++   {XtNtextColor231, XtCTextColor231, XtRPixel, sizeof(Pixel),
++   offset(textcolor[231]),XtRString, "rgb:d4/d4/d4"},
++   {XtNtextColor232, XtCTextColor232, XtRPixel, sizeof(Pixel),
++   offset(textcolor[232]),XtRString, "rgb:08/08/08"},
++   {XtNtextColor233, XtCTextColor233, XtRPixel, sizeof(Pixel),
++   offset(textcolor[233]),XtRString, "rgb:12/12/12"},
++   {XtNtextColor234, XtCTextColor234, XtRPixel, sizeof(Pixel),
++   offset(textcolor[234]),XtRString, "rgb:1c/1c/1c"},
++   {XtNtextColor235, XtCTextColor235, XtRPixel, sizeof(Pixel),
++   offset(textcolor[235]),XtRString, "rgb:26/26/26"},
++   {XtNtextColor236, XtCTextColor236, XtRPixel, sizeof(Pixel),
++   offset(textcolor[236]),XtRString, "rgb:30/30/30"},
++   {XtNtextColor237, XtCTextColor237, XtRPixel, sizeof(Pixel),
++   offset(textcolor[237]),XtRString, "rgb:3a/3a/3a"},
++   {XtNtextColor238, XtCTextColor238, XtRPixel, sizeof(Pixel),
++   offset(textcolor[238]),XtRString, "rgb:44/44/44"},
++   {XtNtextColor239, XtCTextColor239, XtRPixel, sizeof(Pixel),
++   offset(textcolor[239]),XtRString, "rgb:4e/4e/4e"},
++   {XtNtextColor240, XtCTextColor240, XtRPixel, sizeof(Pixel),
++   offset(textcolor[240]),XtRString, "rgb:58/58/58"},
++   {XtNtextColor241, XtCTextColor241, XtRPixel, sizeof(Pixel),
++   offset(textcolor[241]),XtRString, "rgb:62/62/62"},
++   {XtNtextColor242, XtCTextColor242, XtRPixel, sizeof(Pixel),
++   offset(textcolor[242]),XtRString, "rgb:6c/6c/6c"},
++   {XtNtextColor243, XtCTextColor243, XtRPixel, sizeof(Pixel),
++   offset(textcolor[243]),XtRString, "rgb:76/76/76"},
++   {XtNtextColor244, XtCTextColor244, XtRPixel, sizeof(Pixel),
++   offset(textcolor[244]),XtRString, "rgb:80/80/80"},
++   {XtNtextColor245, XtCTextColor245, XtRPixel, sizeof(Pixel),
++   offset(textcolor[245]),XtRString, "rgb:8a/8a/8a"},
++   {XtNtextColor246, XtCTextColor246, XtRPixel, sizeof(Pixel),
++   offset(textcolor[246]),XtRString, "rgb:94/94/94"},
++   {XtNtextColor247, XtCTextColor247, XtRPixel, sizeof(Pixel),
++   offset(textcolor[247]),XtRString, "rgb:9e/9e/9e"},
++   {XtNtextColor248, XtCTextColor248, XtRPixel, sizeof(Pixel),
++   offset(textcolor[248]),XtRString, "rgb:a8/a8/a8"},
++   {XtNtextColor249, XtCTextColor249, XtRPixel, sizeof(Pixel),
++   offset(textcolor[249]),XtRString, "rgb:b2/b2/b2"},
++   {XtNtextColor250, XtCTextColor250, XtRPixel, sizeof(Pixel),
++   offset(textcolor[250]),XtRString, "rgb:bc/bc/bc"},
++   {XtNtextColor251, XtCTextColor251, XtRPixel, sizeof(Pixel),
++   offset(textcolor[251]),XtRString, "rgb:c6/c6/c6"},
++   {XtNtextColor252, XtCTextColor252, XtRPixel, sizeof(Pixel),
++   offset(textcolor[252]),XtRString, "rgb:d0/d0/d0"},
++   {XtNtextColor253, XtCTextColor253, XtRPixel, sizeof(Pixel),
++   offset(textcolor[253]),XtRString, "rgb:da/da/da"},
++   {XtNtextColor254, XtCTextColor254, XtRPixel, sizeof(Pixel),
++   offset(textcolor[254]),XtRString, "rgb:e4/e4/e4"},
++   {XtNtextColor255, XtCTextColor255, XtRPixel, sizeof(Pixel),
++   offset(textcolor[255]),XtRString, "rgb:ee/ee/ee"},
++
++   {XtNforeground, XtCForeground, XtRPixel, sizeof(Pixel),
+    offset(foreground),XtRString,  "XtDefaultForeground"},
+   {XtNcursorColor, XtCForeground, XtRPixel, sizeof(Pixel),
+    offset(cursor_color),XtRString,  "XtDefaultForeground"},
+diff -Nru -x '*.o' -x '*0' -x '*1' -x 'config*' iterm-0.5/unix/Xaw/lib.orig/VT.h iterm-0.5/unix/Xaw/lib/VT.h
+--- iterm-0.5/unix/Xaw/lib.orig/VT.h	2002-10-31 09:08:00.000000000 +0100
++++ iterm-0.5/unix/Xaw/lib/VT.h	2006-02-09 16:27:48.342823000 +0100
+@@ -74,6 +74,248 @@
+ #define XtNtextColor13 "textColor13"
+ #define XtNtextColor14 "textColor14"
+ #define XtNtextColor15 "textColor15"
++
++#define XtNtextColor16 "textColor16"
++#define XtNtextColor17 "textColor17"
++#define XtNtextColor18 "textColor18"
++#define XtNtextColor19 "textColor19"
++#define XtNtextColor20 "textColor20"
++#define XtNtextColor21 "textColor21"
++#define XtNtextColor22 "textColor22"
++#define XtNtextColor23 "textColor23"
++#define XtNtextColor24 "textColor24"
++#define XtNtextColor25 "textColor25"
++#define XtNtextColor26 "textColor26"
++#define XtNtextColor27 "textColor27"
++#define XtNtextColor28 "textColor28"
++#define XtNtextColor29 "textColor29"
++#define XtNtextColor30 "textColor30"
++#define XtNtextColor31 "textColor31"
++#define XtNtextColor32 "textColor32"
++#define XtNtextColor33 "textColor33"
++#define XtNtextColor34 "textColor34"
++#define XtNtextColor35 "textColor35"
++#define XtNtextColor36 "textColor36"
++#define XtNtextColor37 "textColor37"
++#define XtNtextColor38 "textColor38"
++#define XtNtextColor39 "textColor39"
++#define XtNtextColor40 "textColor40"
++#define XtNtextColor41 "textColor41"
++#define XtNtextColor42 "textColor42"
++#define XtNtextColor43 "textColor43"
++#define XtNtextColor44 "textColor44"
++#define XtNtextColor45 "textColor45"
++#define XtNtextColor46 "textColor46"
++#define XtNtextColor47 "textColor47"
++#define XtNtextColor48 "textColor48"
++#define XtNtextColor49 "textColor49"
++#define XtNtextColor50 "textColor50"
++#define XtNtextColor51 "textColor51"
++#define XtNtextColor52 "textColor52"
++#define XtNtextColor53 "textColor53"
++#define XtNtextColor54 "textColor54"
++#define XtNtextColor55 "textColor55"
++#define XtNtextColor56 "textColor56"
++#define XtNtextColor57 "textColor57"
++#define XtNtextColor58 "textColor58"
++#define XtNtextColor59 "textColor59"
++#define XtNtextColor60 "textColor60"
++#define XtNtextColor61 "textColor61"
++#define XtNtextColor62 "textColor62"
++#define XtNtextColor63 "textColor63"
++#define XtNtextColor64 "textColor64"
++#define XtNtextColor65 "textColor65"
++#define XtNtextColor66 "textColor66"
++#define XtNtextColor67 "textColor67"
++#define XtNtextColor68 "textColor68"
++#define XtNtextColor69 "textColor69"
++#define XtNtextColor70 "textColor70"
++#define XtNtextColor71 "textColor71"
++#define XtNtextColor72 "textColor72"
++#define XtNtextColor73 "textColor73"
++#define XtNtextColor74 "textColor74"
++#define XtNtextColor75 "textColor75"
++#define XtNtextColor76 "textColor76"
++#define XtNtextColor77 "textColor77"
++#define XtNtextColor78 "textColor78"
++#define XtNtextColor79 "textColor79"
++#define XtNtextColor80 "textColor80"
++#define XtNtextColor81 "textColor81"
++#define XtNtextColor82 "textColor82"
++#define XtNtextColor83 "textColor83"
++#define XtNtextColor84 "textColor84"
++#define XtNtextColor85 "textColor85"
++#define XtNtextColor86 "textColor86"
++#define XtNtextColor87 "textColor87"
++#define XtNtextColor88 "textColor88"
++#define XtNtextColor89 "textColor89"
++#define XtNtextColor90 "textColor90"
++#define XtNtextColor91 "textColor91"
++#define XtNtextColor92 "textColor92"
++#define XtNtextColor93 "textColor93"
++#define XtNtextColor94 "textColor94"
++#define XtNtextColor95 "textColor95"
++#define XtNtextColor96 "textColor96"
++#define XtNtextColor97 "textColor97"
++#define XtNtextColor98 "textColor98"
++#define XtNtextColor99 "textColor99"
++#define XtNtextColor100 "textColor100"
++#define XtNtextColor101 "textColor101"
++#define XtNtextColor102 "textColor102"
++#define XtNtextColor103 "textColor103"
++#define XtNtextColor104 "textColor104"
++#define XtNtextColor105 "textColor105"
++#define XtNtextColor106 "textColor106"
++#define XtNtextColor107 "textColor107"
++#define XtNtextColor108 "textColor108"
++#define XtNtextColor109 "textColor109"
++#define XtNtextColor110 "textColor110"
++#define XtNtextColor111 "textColor111"
++#define XtNtextColor112 "textColor112"
++#define XtNtextColor113 "textColor113"
++#define XtNtextColor114 "textColor114"
++#define XtNtextColor115 "textColor115"
++#define XtNtextColor116 "textColor116"
++#define XtNtextColor117 "textColor117"
++#define XtNtextColor118 "textColor118"
++#define XtNtextColor119 "textColor119"
++#define XtNtextColor120 "textColor120"
++#define XtNtextColor121 "textColor121"
++#define XtNtextColor122 "textColor122"
++#define XtNtextColor123 "textColor123"
++#define XtNtextColor124 "textColor124"
++#define XtNtextColor125 "textColor125"
++#define XtNtextColor126 "textColor126"
++#define XtNtextColor127 "textColor127"
++#define XtNtextColor128 "textColor128"
++#define XtNtextColor129 "textColor129"
++#define XtNtextColor130 "textColor130"
++#define XtNtextColor131 "textColor131"
++#define XtNtextColor132 "textColor132"
++#define XtNtextColor133 "textColor133"
++#define XtNtextColor134 "textColor134"
++#define XtNtextColor135 "textColor135"
++#define XtNtextColor136 "textColor136"
++#define XtNtextColor137 "textColor137"
++#define XtNtextColor138 "textColor138"
++#define XtNtextColor139 "textColor139"
++#define XtNtextColor140 "textColor140"
++#define XtNtextColor141 "textColor141"
++#define XtNtextColor142 "textColor142"
++#define XtNtextColor143 "textColor143"
++#define XtNtextColor144 "textColor144"
++#define XtNtextColor145 "textColor145"
++#define XtNtextColor146 "textColor146"
++#define XtNtextColor147 "textColor147"
++#define XtNtextColor148 "textColor148"
++#define XtNtextColor149 "textColor149"
++#define XtNtextColor150 "textColor150"
++#define XtNtextColor151 "textColor151"
++#define XtNtextColor152 "textColor152"
++#define XtNtextColor153 "textColor153"
++#define XtNtextColor154 "textColor154"
++#define XtNtextColor155 "textColor155"
++#define XtNtextColor156 "textColor156"
++#define XtNtextColor157 "textColor157"
++#define XtNtextColor158 "textColor158"
++#define XtNtextColor159 "textColor159"
++#define XtNtextColor160 "textColor160"
++#define XtNtextColor161 "textColor161"
++#define XtNtextColor162 "textColor162"
++#define XtNtextColor163 "textColor163"
++#define XtNtextColor164 "textColor164"
++#define XtNtextColor165 "textColor165"
++#define XtNtextColor166 "textColor166"
++#define XtNtextColor167 "textColor167"
++#define XtNtextColor168 "textColor168"
++#define XtNtextColor169 "textColor169"
++#define XtNtextColor170 "textColor170"
++#define XtNtextColor171 "textColor171"
++#define XtNtextColor172 "textColor172"
++#define XtNtextColor173 "textColor173"
++#define XtNtextColor174 "textColor174"
++#define XtNtextColor175 "textColor175"
++#define XtNtextColor176 "textColor176"
++#define XtNtextColor177 "textColor177"
++#define XtNtextColor178 "textColor178"
++#define XtNtextColor179 "textColor179"
++#define XtNtextColor180 "textColor180"
++#define XtNtextColor181 "textColor181"
++#define XtNtextColor182 "textColor182"
++#define XtNtextColor183 "textColor183"
++#define XtNtextColor184 "textColor184"
++#define XtNtextColor185 "textColor185"
++#define XtNtextColor186 "textColor186"
++#define XtNtextColor187 "textColor187"
++#define XtNtextColor188 "textColor188"
++#define XtNtextColor189 "textColor189"
++#define XtNtextColor190 "textColor190"
++#define XtNtextColor191 "textColor191"
++#define XtNtextColor192 "textColor192"
++#define XtNtextColor193 "textColor193"
++#define XtNtextColor194 "textColor194"
++#define XtNtextColor195 "textColor195"
++#define XtNtextColor196 "textColor196"
++#define XtNtextColor197 "textColor197"
++#define XtNtextColor198 "textColor198"
++#define XtNtextColor199 "textColor199"
++#define XtNtextColor200 "textColor200"
++#define XtNtextColor201 "textColor201"
++#define XtNtextColor202 "textColor202"
++#define XtNtextColor203 "textColor203"
++#define XtNtextColor204 "textColor204"
++#define XtNtextColor205 "textColor205"
++#define XtNtextColor206 "textColor206"
++#define XtNtextColor207 "textColor207"
++#define XtNtextColor208 "textColor208"
++#define XtNtextColor209 "textColor209"
++#define XtNtextColor210 "textColor210"
++#define XtNtextColor211 "textColor211"
++#define XtNtextColor212 "textColor212"
++#define XtNtextColor213 "textColor213"
++#define XtNtextColor214 "textColor214"
++#define XtNtextColor215 "textColor215"
++#define XtNtextColor216 "textColor216"
++#define XtNtextColor217 "textColor217"
++#define XtNtextColor218 "textColor218"
++#define XtNtextColor219 "textColor219"
++#define XtNtextColor220 "textColor220"
++#define XtNtextColor221 "textColor221"
++#define XtNtextColor222 "textColor222"
++#define XtNtextColor223 "textColor223"
++#define XtNtextColor224 "textColor224"
++#define XtNtextColor225 "textColor225"
++#define XtNtextColor226 "textColor226"
++#define XtNtextColor227 "textColor227"
++#define XtNtextColor228 "textColor228"
++#define XtNtextColor229 "textColor229"
++#define XtNtextColor230 "textColor230"
++#define XtNtextColor231 "textColor231"
++#define XtNtextColor232 "textColor232"
++#define XtNtextColor233 "textColor233"
++#define XtNtextColor234 "textColor234"
++#define XtNtextColor235 "textColor235"
++#define XtNtextColor236 "textColor236"
++#define XtNtextColor237 "textColor237"
++#define XtNtextColor238 "textColor238"
++#define XtNtextColor239 "textColor239"
++#define XtNtextColor240 "textColor240"
++#define XtNtextColor241 "textColor241"
++#define XtNtextColor242 "textColor242"
++#define XtNtextColor243 "textColor243"
++#define XtNtextColor244 "textColor244"
++#define XtNtextColor245 "textColor245"
++#define XtNtextColor246 "textColor246"
++#define XtNtextColor247 "textColor247"
++#define XtNtextColor248 "textColor248"
++#define XtNtextColor249 "textColor249"
++#define XtNtextColor250 "textColor250"
++#define XtNtextColor251 "textColor251"
++#define XtNtextColor252 "textColor252"
++#define XtNtextColor253 "textColor253"
++#define XtNtextColor254 "textColor254"
++#define XtNtextColor255 "textColor255"
++
+ #define XtCTextColor0  "TextColor0"
+ #define XtCTextColor1  "TextColor1"
+ #define XtCTextColor2  "TextColor2"
+@@ -90,7 +332,250 @@
+ #define XtCTextColor13 "TextColor13"
+ #define XtCTextColor14 "TextColor14"
+ #define XtCTextColor15 "TextColor15"
+-#define MAX_NUM_COLOR 16
++
++#define XtCTextColor16 "TextColor16"
++#define XtCTextColor17 "TextColor17"
++#define XtCTextColor18 "TextColor18"
++#define XtCTextColor19 "TextColor19"
++#define XtCTextColor20 "TextColor20"
++#define XtCTextColor21 "TextColor21"
++#define XtCTextColor22 "TextColor22"
++#define XtCTextColor23 "TextColor23"
++#define XtCTextColor24 "TextColor24"
++#define XtCTextColor25 "TextColor25"
++#define XtCTextColor26 "TextColor26"
++#define XtCTextColor27 "TextColor27"
++#define XtCTextColor28 "TextColor28"
++#define XtCTextColor29 "TextColor29"
++#define XtCTextColor30 "TextColor30"
++#define XtCTextColor31 "TextColor31"
++#define XtCTextColor32 "TextColor32"
++#define XtCTextColor33 "TextColor33"
++#define XtCTextColor34 "TextColor34"
++#define XtCTextColor35 "TextColor35"
++#define XtCTextColor36 "TextColor36"
++#define XtCTextColor37 "TextColor37"
++#define XtCTextColor38 "TextColor38"
++#define XtCTextColor39 "TextColor39"
++#define XtCTextColor40 "TextColor40"
++#define XtCTextColor41 "TextColor41"
++#define XtCTextColor42 "TextColor42"
++#define XtCTextColor43 "TextColor43"
++#define XtCTextColor44 "TextColor44"
++#define XtCTextColor45 "TextColor45"
++#define XtCTextColor46 "TextColor46"
++#define XtCTextColor47 "TextColor47"
++#define XtCTextColor48 "TextColor48"
++#define XtCTextColor49 "TextColor49"
++#define XtCTextColor50 "TextColor50"
++#define XtCTextColor51 "TextColor51"
++#define XtCTextColor52 "TextColor52"
++#define XtCTextColor53 "TextColor53"
++#define XtCTextColor54 "TextColor54"
++#define XtCTextColor55 "TextColor55"
++#define XtCTextColor56 "TextColor56"
++#define XtCTextColor57 "TextColor57"
++#define XtCTextColor58 "TextColor58"
++#define XtCTextColor59 "TextColor59"
++#define XtCTextColor60 "TextColor60"
++#define XtCTextColor61 "TextColor61"
++#define XtCTextColor62 "TextColor62"
++#define XtCTextColor63 "TextColor63"
++#define XtCTextColor64 "TextColor64"
++#define XtCTextColor65 "TextColor65"
++#define XtCTextColor66 "TextColor66"
++#define XtCTextColor67 "TextColor67"
++#define XtCTextColor68 "TextColor68"
++#define XtCTextColor69 "TextColor69"
++#define XtCTextColor70 "TextColor70"
++#define XtCTextColor71 "TextColor71"
++#define XtCTextColor72 "TextColor72"
++#define XtCTextColor73 "TextColor73"
++#define XtCTextColor74 "TextColor74"
++#define XtCTextColor75 "TextColor75"
++#define XtCTextColor76 "TextColor76"
++#define XtCTextColor77 "TextColor77"
++#define XtCTextColor78 "TextColor78"
++#define XtCTextColor79 "TextColor79"
++#define XtCTextColor80 "TextColor80"
++#define XtCTextColor81 "TextColor81"
++#define XtCTextColor82 "TextColor82"
++#define XtCTextColor83 "TextColor83"
++#define XtCTextColor84 "TextColor84"
++#define XtCTextColor85 "TextColor85"
++#define XtCTextColor86 "TextColor86"
++#define XtCTextColor87 "TextColor87"
++#define XtCTextColor88 "TextColor88"
++#define XtCTextColor89 "TextColor89"
++#define XtCTextColor90 "TextColor90"
++#define XtCTextColor91 "TextColor91"
++#define XtCTextColor92 "TextColor92"
++#define XtCTextColor93 "TextColor93"
++#define XtCTextColor94 "TextColor94"
++#define XtCTextColor95 "TextColor95"
++#define XtCTextColor96 "TextColor96"
++#define XtCTextColor97 "TextColor97"
++#define XtCTextColor98 "TextColor98"
++#define XtCTextColor99 "TextColor99"
++#define XtCTextColor100 "TextColor100"
++#define XtCTextColor101 "TextColor101"
++#define XtCTextColor102 "TextColor102"
++#define XtCTextColor103 "TextColor103"
++#define XtCTextColor104 "TextColor104"
++#define XtCTextColor105 "TextColor105"
++#define XtCTextColor106 "TextColor106"
++#define XtCTextColor107 "TextColor107"
++#define XtCTextColor108 "TextColor108"
++#define XtCTextColor109 "TextColor109"
++#define XtCTextColor110 "TextColor110"
++#define XtCTextColor111 "TextColor111"
++#define XtCTextColor112 "TextColor112"
++#define XtCTextColor113 "TextColor113"
++#define XtCTextColor114 "TextColor114"
++#define XtCTextColor115 "TextColor115"
++#define XtCTextColor116 "TextColor116"
++#define XtCTextColor117 "TextColor117"
++#define XtCTextColor118 "TextColor118"
++#define XtCTextColor119 "TextColor119"
++#define XtCTextColor120 "TextColor120"
++#define XtCTextColor121 "TextColor121"
++#define XtCTextColor122 "TextColor122"
++#define XtCTextColor123 "TextColor123"
++#define XtCTextColor124 "TextColor124"
++#define XtCTextColor125 "TextColor125"
++#define XtCTextColor126 "TextColor126"
++#define XtCTextColor127 "TextColor127"
++#define XtCTextColor128 "TextColor128"
++#define XtCTextColor129 "TextColor129"
++#define XtCTextColor130 "TextColor130"
++#define XtCTextColor131 "TextColor131"
++#define XtCTextColor132 "TextColor132"
++#define XtCTextColor133 "TextColor133"
++#define XtCTextColor134 "TextColor134"
++#define XtCTextColor135 "TextColor135"
++#define XtCTextColor136 "TextColor136"
++#define XtCTextColor137 "TextColor137"
++#define XtCTextColor138 "TextColor138"
++#define XtCTextColor139 "TextColor139"
++#define XtCTextColor140 "TextColor140"
++#define XtCTextColor141 "TextColor141"
++#define XtCTextColor142 "TextColor142"
++#define XtCTextColor143 "TextColor143"
++#define XtCTextColor144 "TextColor144"
++#define XtCTextColor145 "TextColor145"
++#define XtCTextColor146 "TextColor146"
++#define XtCTextColor147 "TextColor147"
++#define XtCTextColor148 "TextColor148"
++#define XtCTextColor149 "TextColor149"
++#define XtCTextColor150 "TextColor150"
++#define XtCTextColor151 "TextColor151"
++#define XtCTextColor152 "TextColor152"
++#define XtCTextColor153 "TextColor153"
++#define XtCTextColor154 "TextColor154"
++#define XtCTextColor155 "TextColor155"
++#define XtCTextColor156 "TextColor156"
++#define XtCTextColor157 "TextColor157"
++#define XtCTextColor158 "TextColor158"
++#define XtCTextColor159 "TextColor159"
++#define XtCTextColor160 "TextColor160"
++#define XtCTextColor161 "TextColor161"
++#define XtCTextColor162 "TextColor162"
++#define XtCTextColor163 "TextColor163"
++#define XtCTextColor164 "TextColor164"
++#define XtCTextColor165 "TextColor165"
++#define XtCTextColor166 "TextColor166"
++#define XtCTextColor167 "TextColor167"
++#define XtCTextColor168 "TextColor168"
++#define XtCTextColor169 "TextColor169"
++#define XtCTextColor170 "TextColor170"
++#define XtCTextColor171 "TextColor171"
++#define XtCTextColor172 "TextColor172"
++#define XtCTextColor173 "TextColor173"
++#define XtCTextColor174 "TextColor174"
++#define XtCTextColor175 "TextColor175"
++#define XtCTextColor176 "TextColor176"
++#define XtCTextColor177 "TextColor177"
++#define XtCTextColor178 "TextColor178"
++#define XtCTextColor179 "TextColor179"
++#define XtCTextColor180 "TextColor180"
++#define XtCTextColor181 "TextColor181"
++#define XtCTextColor182 "TextColor182"
++#define XtCTextColor183 "TextColor183"
++#define XtCTextColor184 "TextColor184"
++#define XtCTextColor185 "TextColor185"
++#define XtCTextColor186 "TextColor186"
++#define XtCTextColor187 "TextColor187"
++#define XtCTextColor188 "TextColor188"
++#define XtCTextColor189 "TextColor189"
++#define XtCTextColor190 "TextColor190"
++#define XtCTextColor191 "TextColor191"
++#define XtCTextColor192 "TextColor192"
++#define XtCTextColor193 "TextColor193"
++#define XtCTextColor194 "TextColor194"
++#define XtCTextColor195 "TextColor195"
++#define XtCTextColor196 "TextColor196"
++#define XtCTextColor197 "TextColor197"
++#define XtCTextColor198 "TextColor198"
++#define XtCTextColor199 "TextColor199"
++#define XtCTextColor200 "TextColor200"
++#define XtCTextColor201 "TextColor201"
++#define XtCTextColor202 "TextColor202"
++#define XtCTextColor203 "TextColor203"
++#define XtCTextColor204 "TextColor204"
++#define XtCTextColor205 "TextColor205"
++#define XtCTextColor206 "TextColor206"
++#define XtCTextColor207 "TextColor207"
++#define XtCTextColor208 "TextColor208"
++#define XtCTextColor209 "TextColor209"
++#define XtCTextColor210 "TextColor210"
++#define XtCTextColor211 "TextColor211"
++#define XtCTextColor212 "TextColor212"
++#define XtCTextColor213 "TextColor213"
++#define XtCTextColor214 "TextColor214"
++#define XtCTextColor215 "TextColor215"
++#define XtCTextColor216 "TextColor216"
++#define XtCTextColor217 "TextColor217"
++#define XtCTextColor218 "TextColor218"
++#define XtCTextColor219 "TextColor219"
++#define XtCTextColor220 "TextColor220"
++#define XtCTextColor221 "TextColor221"
++#define XtCTextColor222 "TextColor222"
++#define XtCTextColor223 "TextColor223"
++#define XtCTextColor224 "TextColor224"
++#define XtCTextColor225 "TextColor225"
++#define XtCTextColor226 "TextColor226"
++#define XtCTextColor227 "TextColor227"
++#define XtCTextColor228 "TextColor228"
++#define XtCTextColor229 "TextColor229"
++#define XtCTextColor230 "TextColor230"
++#define XtCTextColor231 "TextColor231"
++#define XtCTextColor232 "TextColor232"
++#define XtCTextColor233 "TextColor233"
++#define XtCTextColor234 "TextColor234"
++#define XtCTextColor235 "TextColor235"
++#define XtCTextColor236 "TextColor236"
++#define XtCTextColor237 "TextColor237"
++#define XtCTextColor238 "TextColor238"
++#define XtCTextColor239 "TextColor239"
++#define XtCTextColor240 "TextColor240"
++#define XtCTextColor241 "TextColor241"
++#define XtCTextColor242 "TextColor242"
++#define XtCTextColor243 "TextColor243"
++#define XtCTextColor244 "TextColor244"
++#define XtCTextColor245 "TextColor245"
++#define XtCTextColor246 "TextColor246"
++#define XtCTextColor247 "TextColor247"
++#define XtCTextColor248 "TextColor248"
++#define XtCTextColor249 "TextColor249"
++#define XtCTextColor250 "TextColor250"
++#define XtCTextColor251 "TextColor251"
++#define XtCTextColor252 "TextColor252"
++#define XtCTextColor253 "TextColor253"
++#define XtCTextColor254 "TextColor254"
++#define XtCTextColor255 "TextColor255"
++
++
++#define MAX_NUM_COLOR 256
+ 
+ #define XtNfontSet1 "fontSet1"
+ #define XtNfontSet2 "fontSet2"
+diff -Nru -x '*.o' -x '*0' -x '*1' -x 'config*' iterm-0.5/unix/Xaw/lib.orig/VTScreenView.c iterm-0.5/unix/Xaw/lib/VTScreenView.c
+--- iterm-0.5/unix/Xaw/lib.orig/VTScreenView.c	2002-11-06 11:56:17.000000000 +0100
++++ iterm-0.5/unix/Xaw/lib/VTScreenView.c	2006-02-09 16:44:09.624149250 +0100
+@@ -124,17 +124,25 @@
+   VTWidget w = (VTWidget)((ItermWidget)view->object)->iterm.vt;
+   Pixel fore_pixel;
+   Pixel back_pixel;
+-
+-  if( 0 < background && background < 9)
+-      back_pixel = w->vt.textcolor[background-1];
++  
++  back_pixel = w->vt.textcolor[background];
++#if 0
++  if( 0 <= background && background < 8)
++      back_pixel = w->vt.textcolor[background];
+   else
+       back_pixel = w->core.background_pixel;
++#endif
++  fore_pixel = w->vt.textcolor[foreground];
+ 
+-  if( 0 < foreground && foreground < 9)
+-      fore_pixel = w->vt.textcolor[foreground-1];
++  if (!foreground && !background) {
++	  back_pixel = w->vt.textcolor[15];
++  }
++#if 0
++  if( 0 <= foreground && foreground < 8)
++      fore_pixel = w->vt.textcolor[foreground];
+   else
+       fore_pixel = w->vt.foreground;
+-
++#endif
+       /* When background and foreground is same color
+          use substitute color
+        */
