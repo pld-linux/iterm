@@ -1,0 +1,11 @@
+--- iterm-0.5/unix/fbiterm/src/VTScreenView.c.orig	2006-02-10 09:21:25.312510250 +0100
++++ iterm-0.5/unix/fbiterm/src/VTScreenView.c	2006-02-10 09:22:11.027367250 +0100
+@@ -42,6 +42,8 @@
+   int srcy;
+   int length;
+ 
++  if (pIterm->lock) return;
++
+   if(dest < src)
+   {
+     desty = dest * pIterm->fb->line_length * pIterm->cell_height;
