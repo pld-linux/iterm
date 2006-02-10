@@ -2,7 +2,7 @@ Summary:	Internationalized Terminal Emulator Framework
 Summary(pl):	Szkielet dla umiêdzynarodowionego emulatora terminala
 Name:		iterm
 Version:	0.5
-Release:	3
+Release:	4
 License:	Common Public License v0.5
 Group:		Applications
 Source0:	http://www.doc.ic.ac.uk/~mbt99/Y/src/%{name}-%{version}-mbt.tar.gz
@@ -11,6 +11,7 @@ Source1:	gtkiterm.desktop
 Source2:	xiterm.desktop
 Patch0:		%{name}-make.patch
 Patch1:		%{name}-256-colors.patch
+Patch2:		%{name}-fb-scroll.patch
 URL:		http://www-124.ibm.com/linux/projects/iterm/
 BuildRequires:	XFree86-devel
 BuildRequires:	autoconf >= 2.53
@@ -177,6 +178,7 @@ ale dzia³a jako minimalny emulator terminala.
 %setup -q
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 %build
 # libiterm
