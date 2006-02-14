@@ -1,0 +1,12 @@
+diff -Nru iterm-0.5.orig/unix/terminfo/iterm.terminfo iterm-0.5/unix/terminfo/iterm.terminfo
+--- iterm-0.5.orig/unix/terminfo/iterm.terminfo	2002-10-23 12:22:34.000000000 +0200
++++ iterm-0.5/unix/terminfo/iterm.terminfo	2006-02-14 14:25:10.861154750 +0100
+@@ -19,7 +19,7 @@
+ 	cuu1=\E[A, ed=\E[J, el=\E[K, el1=\E[1K, ech=\E[%p1%dX,
+ 	enacs=\E(B\E)0, home=\E[H, ht=^I, hts=\EH, ind=^J, ka1=\EOq, 
+ 	ka3=\EOs, kb2=\EOr, kbs=^H, kc1=\EOp, kc3=\EOn, kcub1=\EOD, 
+-	kcud1=\EOB, kcuf1=\EOC, kcuu1=\EOA, kent=\EOM, 
++	kcud1=\EOB, kcuf1=\EOC, kcuu1=\EOA, kent=\EOM, kend=\E[4~, khome=\E[1~, kdch1=\E[3~,
+ 	kf1=\E[11~, kf2=\E[12~, kf3=\E[13~, kf4=\E[14~, kf5=\E[15~, 
+ 	kf6=\E[17~, kf7=\E[18~, kf8=\E[19~, kf9=\E[20~, kf10=\E[21~, 
+ 	kf11=\E[23~, kf12=\E[24~, kf13=\E[25, kf14=\E[26~, kf15=\E[28~,
