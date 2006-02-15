@@ -13,6 +13,7 @@ Patch0:		%{name}-make.patch
 Patch1:		%{name}-256-colors.patch
 Patch2:		%{name}-fb-scroll.patch
 Patch3:		%{name}-terminfo.patch
+Patch4:		%{name}-fb-direct.patch
 URL:		http://www-124.ibm.com/linux/projects/iterm/
 BuildRequires:	XFree86-devel
 BuildRequires:	autoconf >= 2.53
@@ -181,6 +182,7 @@ ale dzia³a jako minimalny emulator terminala.
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
 
 %build
 # libiterm
