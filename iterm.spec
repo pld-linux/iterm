@@ -1,3 +1,4 @@
+# TODO: xorg reqs
 Summary:	Internationalized Terminal Emulator Framework
 Summary(pl):	Szkielet dla umiêdzynarodowionego emulatora terminala
 Name:		iterm
@@ -14,8 +15,8 @@ Patch1:		%{name}-256-colors.patch
 Patch2:		%{name}-fb-scroll.patch
 Patch3:		%{name}-terminfo.patch
 Patch4:		%{name}-fb-direct.patch
+Patch5:		%{name}-gcc4.patch
 URL:		http://www-124.ibm.com/linux/projects/iterm/
-BuildRequires:	XFree86-devel
 BuildRequires:	autoconf >= 2.53
 BuildRequires:	automake
 BuildRequires:	fribidi-devel
@@ -23,6 +24,9 @@ BuildRequires:	gtk+2-devel >= 1:2.0.0
 BuildRequires:	libtool >= 1:1.4.2-9
 BuildRequires:	pkgconfig
 BuildRequires:	utempter-devel
+BuildRequires:	xorg-lib-libXaw-devel
+BuildRequires:	xorg-lib-libXfont-devel
+BuildRequires:	xorg-proto-fontsproto-devel
 # currently %{_datadir}/terminfo/i dir belongs to terminfo
 Requires:	terminfo
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -183,6 +187,7 @@ ale dzia³a jako minimalny emulator terminala.
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
+%patch5 -p1
 
 %build
 # libiterm
@@ -226,7 +231,8 @@ cd ../../fbiterm
 %{__autoconf}
 %{__autoheader}
 %{__automake}
-%configure
+%configure \
+	--x-includes=%{_includedir}
 %{__make}
 
 # gtkiterm
