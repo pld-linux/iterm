@@ -1,0 +1,12 @@
+--- iterm-0.5/unix/Xaw/lib/xim.c.old	2006-10-18 18:11:35.000000000 +0200
++++ iterm-0.5/unix/Xaw/lib/xim.c	2006-10-18 18:12:03.000000000 +0200
+@@ -63,8 +63,8 @@
+         }
+       }
+     }
+-    loop_end:
+   }
++loop_end:
+   XFree(im_styles);
+ 
+   if(!found)
