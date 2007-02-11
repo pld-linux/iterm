@@ -175,7 +175,7 @@ This is a very early version of gtkiterm: GTK+ version of iterm
 implementation. I doesn't yet implement all the features of iterm, but
 it works as a minimum terminal emulator. 
 
-%description gtk
+%description gtk -l pl
 To jest bardzo wczesna wersja gtkiterm - portu GTK+ implementacji
 iterm. Jeszcze nie ma zaimplementowanych wszystkich mo¿liwo¶ci iterma,
 ale dzia³a jako minimalny emulator terminala.
