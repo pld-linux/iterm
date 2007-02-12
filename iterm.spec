@@ -1,6 +1,6 @@
 # TODO: xorg reqs
 Summary:	Internationalized Terminal Emulator Framework
-Summary(pl):	Szkielet dla umiêdzynarodowionego emulatora terminala
+Summary(pl.UTF-8):   Szkielet dla umiÄ™dzynarodowionego emulatora terminala
 Name:		iterm
 Version:	0.5
 Release:	5
@@ -39,15 +39,15 @@ Virtual Terminal Emulator. Implementing platform-dependent part of
 this framework, you can easily build internationalized virtual
 terminal/Widget.
 
-%description -l pl
-Iterm to niezale¿ny od platformy szkielet do tworzenia
-umiêdzynarodowionych emulatorów wirtualnych terminali. Poprzez
-zaimplementowanie zale¿nych od platformy czê¶ci szkieletu mo¿na ³atwo
-zbudowaæ umiêdzynarodowiony program lub widget emulatora terminala.
+%description -l pl.UTF-8
+Iterm to niezaleÅ¼ny od platformy szkielet do tworzenia
+umiÄ™dzynarodowionych emulatorÃ³w wirtualnych terminali. Poprzez
+zaimplementowanie zaleÅ¼nych od platformy czÄ™Å›ci szkieletu moÅ¼na Å‚atwo
+zbudowaÄ‡ umiÄ™dzynarodowiony program lub widget emulatora terminala.
 
 %package -n libiterm
 Summary:	Internationalized Terminal Emulator Library
-Summary(pl):	Biblioteka umiêdzynarodowionego emulatora terminala
+Summary(pl.UTF-8):   Biblioteka umiÄ™dzynarodowionego emulatora terminala
 Group:		Libraries
 Requires:	%{name} = %{version}-%{release}
 
@@ -57,15 +57,15 @@ All you need to make terminal emulator is to implements callback
 functions, like a drawing string on specific column and row, or set
 fore/background color and so on.
 
-%description -n libiterm -l pl
-libiterm to przeno¶na biblioteka dla umiêdzynarodowionego emulatora
-terminala. Wszystko co trzeba zrobiæ aby otrzymaæ emulator, to
-zaimplementowaæ funkcje callback takie jak rysowanie napisów w
-okre¶lonej kolumnie i wierszu, ustawianie koloru napisów/t³a itp.
+%description -n libiterm -l pl.UTF-8
+libiterm to przenoÅ›na biblioteka dla umiÄ™dzynarodowionego emulatora
+terminala. Wszystko co trzeba zrobiÄ‡ aby otrzymaÄ‡ emulator, to
+zaimplementowaÄ‡ funkcje callback takie jak rysowanie napisÃ³w w
+okreÅ›lonej kolumnie i wierszu, ustawianie koloru napisÃ³w/tÅ‚a itp.
 
 %package -n libiterm-devel
 Summary:	Header files for libiterm library
-Summary(pl):	Pliki nag³ówkowe biblioteki libiterm
+Summary(pl.UTF-8):   Pliki nagÅ‚Ã³wkowe biblioteki libiterm
 Group:		Development/Libraries
 Requires:	libiterm = %{version}-%{release}
 Requires:	fribidi-devel
@@ -74,24 +74,24 @@ Requires:	utempter-devel
 %description -n libiterm-devel
 Header files for libiterm library.
 
-%description -n libiterm-devel -l pl
-Pliki nag³ówkowe biblioteki libiterm.
+%description -n libiterm-devel -l pl.UTF-8
+Pliki nagÅ‚Ã³wkowe biblioteki libiterm.
 
 %package -n libiterm-static
 Summary:	Static libiterm library
-Summary(pl):	Statyczna biblioteka libiterm
+Summary(pl.UTF-8):   Statyczna biblioteka libiterm
 Group:		Development/Libraries
 Requires:	libiterm-devel = %{version}-%{release}
 
 %description -n libiterm-static
 Static libiterm library.
 
-%description -n libiterm-static -l pl
+%description -n libiterm-static -l pl.UTF-8
 Statyczna biblioteka libiterm.
 
 %package -n libXiterm
 Summary:	X Internationalized Terminal Widget
-Summary(pl):	Widget umiêdzynarodowionego terminala dla X
+Summary(pl.UTF-8):   Widget umiÄ™dzynarodowionego terminala dla X
 Group:		Libraries
 Requires:	libiterm = %{version}-%{release}
 
@@ -99,13 +99,13 @@ Requires:	libiterm = %{version}-%{release}
 libXiterm is an X Internationalized Terminal Widget which uses
 libiterm.
 
-%description -n libXiterm -l pl
-libXiterm to widget umiêdzynarodowionego terminala korzystaj±cy z
+%description -n libXiterm -l pl.UTF-8
+libXiterm to widget umiÄ™dzynarodowionego terminala korzystajÄ…cy z
 libiterm.
 
 %package -n libXiterm-devel
 Summary:	Header files for libXiterm library
-Summary(pl):	Pliki nag³ówkowe biblioteki libXiterm
+Summary(pl.UTF-8):   Pliki nagÅ‚Ã³wkowe biblioteki libXiterm
 Group:		Development/Libraries
 Requires:	libXiterm = %{version}-%{release}
 Requires:	libiterm-devel = %{version}-%{release}
@@ -113,24 +113,24 @@ Requires:	libiterm-devel = %{version}-%{release}
 %description -n libXiterm-devel
 Header files for libXiterm library.
 
-%description -n libXiterm-devel -l pl
-Pliki nag³ówkowe biblioteki libXiterm.
+%description -n libXiterm-devel -l pl.UTF-8
+Pliki nagÅ‚Ã³wkowe biblioteki libXiterm.
 
 %package -n libXiterm-static
 Summary:	Static libXiterm library
-Summary(pl):	Statyczna biblioteka libXiterm
+Summary(pl.UTF-8):   Statyczna biblioteka libXiterm
 Group:		Development/Libraries
 Requires:	libXiterm-devel = %{version}-%{release}
 
 %description -n libXiterm-static
 Static libXiterm library.
 
-%description -n libXiterm-static -l pl
+%description -n libXiterm-static -l pl.UTF-8
 Statyczna biblioteka libXiterm.
 
 %package Xaw
 Summary:	X Internationalized Terminal Emulator
-Summary(pl):	Umiêdzynarodowiony emulator terminala dla X
+Summary(pl.UTF-8):   UmiÄ™dzynarodowiony emulator terminala dla X
 Group:		X11/Applications
 Requires:	libXiterm = %{version}-%{release}
 
@@ -138,13 +138,13 @@ Requires:	libXiterm = %{version}-%{release}
 xiterm is an X Internationalized Terminal Emulator which uses
 libXiterm widget.
 
-%description Xaw -l pl
-xiterm to umiêdzynarodowiony emulator terminala dla X korzystaj±cy
+%description Xaw -l pl.UTF-8
+xiterm to umiÄ™dzynarodowiony emulator terminala dla X korzystajÄ…cy
 z widgetu libXiterm.
 
 %package fb
 Summary:	fbiterm - FrameBuffer Internationalized TERMinal emulator
-Summary(pl):	fbiterm - umiêdzynarodowiony emulator terminala dla framebuffera
+Summary(pl.UTF-8):   fbiterm - umiÄ™dzynarodowiony emulator terminala dla framebuffera
 Group:		Applications
 Requires:	libiterm = %{version}-%{release}
 
@@ -156,17 +156,17 @@ Linux framebuffer, fonts loaded from X Window System font library,
 as well as BiDi text layout engine. As such, it readily supports
 BiDi/CTL and CJK languages.
 
-%description fb -l pl
+%description fb -l pl.UTF-8
 fbiterm (FrameBuffer Internationalized TERMinal emulator) to program
-terminalowy potrafi±cy wy¶wietlaæ wiele jêzyków na linuksowej konsoli.
-Korzysta z libiterm (szkieletu umiêdzynarodowionego terminala),
-linuksowego framebuffera, fontów wczytywanych poprzez bibliotekê z X
-Window System, a tak¿e silnika rysuj±cego tekst dwukierunkowy (BiDi).
-Jako taki jest gotowy do obs³ugi jêzyków BiDi/CTL i CJK.
+terminalowy potrafiÄ…cy wyÅ›wietlaÄ‡ wiele jÄ™zykÃ³w na linuksowej konsoli.
+Korzysta z libiterm (szkieletu umiÄ™dzynarodowionego terminala),
+linuksowego framebuffera, fontÃ³w wczytywanych poprzez bibliotekÄ™ z X
+Window System, a takÅ¼e silnika rysujÄ…cego tekst dwukierunkowy (BiDi).
+Jako taki jest gotowy do obsÅ‚ugi jÄ™zykÃ³w BiDi/CTL i CJK.
 
 %package gtk
 Summary:	gtkiterm - GTK+ version of iterm implementation
-Summary(pl):	gtkiterm - wersja GTK+ implementacji iterm
+Summary(pl.UTF-8):   gtkiterm - wersja GTK+ implementacji iterm
 Group:		X11/Applications
 Requires:	libiterm = %{version}-%{release}
 
@@ -175,10 +175,10 @@ This is a very early version of gtkiterm: GTK+ version of iterm
 implementation. I doesn't yet implement all the features of iterm, but
 it works as a minimum terminal emulator. 
 
-%description gtk -l pl
+%description gtk -l pl.UTF-8
 To jest bardzo wczesna wersja gtkiterm - portu GTK+ implementacji
-iterm. Jeszcze nie ma zaimplementowanych wszystkich mo¿liwo¶ci iterma,
-ale dzia³a jako minimalny emulator terminala.
+iterm. Jeszcze nie ma zaimplementowanych wszystkich moÅ¼liwoÅ›ci iterma,
+ale dziaÅ‚a jako minimalny emulator terminala.
 
 %prep
 %setup -q
