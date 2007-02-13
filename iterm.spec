@@ -1,6 +1,6 @@
 # TODO: xorg reqs
 Summary:	Internationalized Terminal Emulator Framework
-Summary(pl.UTF-8):   Szkielet dla umiędzynarodowionego emulatora terminala
+Summary(pl.UTF-8):	Szkielet dla umiędzynarodowionego emulatora terminala
 Name:		iterm
 Version:	0.5
 Release:	5
@@ -47,7 +47,7 @@ zbudować umiędzynarodowiony program lub widget emulatora terminala.
 
 %package -n libiterm
 Summary:	Internationalized Terminal Emulator Library
-Summary(pl.UTF-8):   Biblioteka umiędzynarodowionego emulatora terminala
+Summary(pl.UTF-8):	Biblioteka umiędzynarodowionego emulatora terminala
 Group:		Libraries
 Requires:	%{name} = %{version}-%{release}
 
@@ -65,7 +65,7 @@ określonej kolumnie i wierszu, ustawianie koloru napisów/tła itp.
 
 %package -n libiterm-devel
 Summary:	Header files for libiterm library
-Summary(pl.UTF-8):   Pliki nagłówkowe biblioteki libiterm
+Summary(pl.UTF-8):	Pliki nagłówkowe biblioteki libiterm
 Group:		Development/Libraries
 Requires:	libiterm = %{version}-%{release}
 Requires:	fribidi-devel
@@ -79,7 +79,7 @@ Pliki nagłówkowe biblioteki libiterm.
 
 %package -n libiterm-static
 Summary:	Static libiterm library
-Summary(pl.UTF-8):   Statyczna biblioteka libiterm
+Summary(pl.UTF-8):	Statyczna biblioteka libiterm
 Group:		Development/Libraries
 Requires:	libiterm-devel = %{version}-%{release}
 
@@ -91,7 +91,7 @@ Statyczna biblioteka libiterm.
 
 %package -n libXiterm
 Summary:	X Internationalized Terminal Widget
-Summary(pl.UTF-8):   Widget umiędzynarodowionego terminala dla X
+Summary(pl.UTF-8):	Widget umiędzynarodowionego terminala dla X
 Group:		Libraries
 Requires:	libiterm = %{version}-%{release}
 
@@ -105,7 +105,7 @@ libiterm.
 
 %package -n libXiterm-devel
 Summary:	Header files for libXiterm library
-Summary(pl.UTF-8):   Pliki nagłówkowe biblioteki libXiterm
+Summary(pl.UTF-8):	Pliki nagłówkowe biblioteki libXiterm
 Group:		Development/Libraries
 Requires:	libXiterm = %{version}-%{release}
 Requires:	libiterm-devel = %{version}-%{release}
@@ -118,7 +118,7 @@ Pliki nagłówkowe biblioteki libXiterm.
 
 %package -n libXiterm-static
 Summary:	Static libXiterm library
-Summary(pl.UTF-8):   Statyczna biblioteka libXiterm
+Summary(pl.UTF-8):	Statyczna biblioteka libXiterm
 Group:		Development/Libraries
 Requires:	libXiterm-devel = %{version}-%{release}
 
@@ -130,7 +130,7 @@ Statyczna biblioteka libXiterm.
 
 %package Xaw
 Summary:	X Internationalized Terminal Emulator
-Summary(pl.UTF-8):   Umiędzynarodowiony emulator terminala dla X
+Summary(pl.UTF-8):	Umiędzynarodowiony emulator terminala dla X
 Group:		X11/Applications
 Requires:	libXiterm = %{version}-%{release}
 
@@ -144,7 +144,7 @@ z widgetu libXiterm.
 
 %package fb
 Summary:	fbiterm - FrameBuffer Internationalized TERMinal emulator
-Summary(pl.UTF-8):   fbiterm - umiędzynarodowiony emulator terminala dla framebuffera
+Summary(pl.UTF-8):	fbiterm - umiędzynarodowiony emulator terminala dla framebuffera
 Group:		Applications
 Requires:	libiterm = %{version}-%{release}
 
@@ -166,7 +166,7 @@ Jako taki jest gotowy do obsługi języków BiDi/CTL i CJK.
 
 %package gtk
 Summary:	gtkiterm - GTK+ version of iterm implementation
-Summary(pl.UTF-8):   gtkiterm - wersja GTK+ implementacji iterm
+Summary(pl.UTF-8):	gtkiterm - wersja GTK+ implementacji iterm
 Group:		X11/Applications
 Requires:	libiterm = %{version}-%{release}
 
