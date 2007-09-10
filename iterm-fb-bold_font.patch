@@ -1,0 +1,160 @@
+diff -Nru iterm-0.5/unix/fbiterm/src/fbiterm.c iterm-0.5.new/unix/fbiterm/src/fbiterm.c
+--- iterm-0.5/unix/fbiterm/src/fbiterm.c	2002-10-24 14:44:01.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fbiterm.c	2007-09-10 09:58:07.000000000 +0200
+@@ -39,11 +39,11 @@
+ static void
+ iterm_usage (void)
+ {
+-  fprintf (stdout, "Usage: iterm [ -a <fontfile> ] [ -m <fontfile> ] [ -v ]\n\
++  fprintf (stdout, "Usage: iterm [ -a <fontfile> ] [ -b <fontfile> ] [ -v ]\n\
+ \n\
+ options:\n\
+-  -a <fontfile>\tascii text font\n\
+-  -m <fontfile>\tunicode text font\n\
++  -a <fontfile>\tnormal text font\n\
++  -b <fontfile>\tbold text font\n\
+   -v\t\tprint version information and exit\n\
+   -h\t\tthis help message\n");
+ 
+@@ -79,7 +79,7 @@
+ 
+   ascfontname = DefaultAsc;
+   mbfontname = DefaultMB;
+-  while ((i = getopt (argc, argv, "a:m:hv")) != EOF)
++  while ((i = getopt (argc, argv, "a:b:hv")) != EOF)
+     switch (i)
+       {
+       case 'a':
+@@ -89,7 +89,7 @@
+ 	  ascfontname = DefaultAsc;
+ 	break;
+ 
+-      case 'm':
++      case 'b':
+ 	if (optarg != NULL)
+ 	  mbfontname = optarg;
+ 	else
+diff -Nru iterm-0.5/unix/fbiterm/src/fbiterm.h iterm-0.5.new/unix/fbiterm/src/fbiterm.h
+--- iterm-0.5/unix/fbiterm/src/fbiterm.h	2007-09-10 10:02:22.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fbiterm.h	2007-09-10 09:47:55.000000000 +0200
+@@ -53,9 +53,9 @@
+ #define FB_ENV    "FRAMEBUFFER"
+ #define FB_DEFDEV "/dev/fb0"
+ 
+-#define DefaultAsc	"/usr/lib/X11/fonts/misc/8x16.pcf.gz"
+-#define DefaultMB	"/usr/lib/X11/fonts/misc/unifont.pcf.gz"
+-#define DefaultFont	"/usr/local/share/iterm/fonts/8x16.pcf.gz"
++#define DefaultAsc	"/usr/share/fonts/misc/8x13.pcf.gz"
++#define DefaultMB	"/usr/share/fonts/misc/8x13B.pcf.gz"
++#define DefaultFont	"/usr/share/fonts/misc/8x16.pcf.gz"
+ 
+ enum ITERM_RETCODE
+ {
+diff -Nru iterm-0.5/unix/fbiterm/src/fb_true16.c iterm-0.5.new/unix/fbiterm/src/fb_true16.c
+--- iterm-0.5/unix/fbiterm/src/fb_true16.c	2007-09-10 10:02:22.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb_true16.c	2007-09-10 10:01:59.000000000 +0200
+@@ -215,6 +215,7 @@
+   unsigned char *bits;
+   char *dst;
+   mbstate_t ps;
++  TermFont *font = pIterm->bold ? pIterm->mb_font : pIterm->asc_font;
+ 
+   if (pIterm->lock)
+     return;
+@@ -252,13 +253,13 @@
+ 	  if (len == 1 && mbstring[i] < 0x7f)
+ 	    {
+ 	      codepoint = (int) (mbstring[i] & 0x000000ff);
+-	      bits = get_glyph (pIterm->asc_font, codepoint, &height);
++	      bits = get_glyph (font, codepoint, &height);
+ 	      w = pIterm->asc_font->cell_width;
+ 	    }
+ 	  else
+ 	    {
+ 	      mbrtowc (&wc, (char *) &mbstring[i], len, 0);
+-	      bits = get_glyph (pIterm->mb_font, wc, &height);
++	      bits = get_glyph (font, wc, &height);
+ 	      wlen = wcwidth (wc);
+ 	      w = pIterm->asc_font->cell_width * (wlen > 0 ? wlen : 1);
+ 	    }
+diff -Nru iterm-0.5/unix/fbiterm/src/fb_true24.c iterm-0.5.new/unix/fbiterm/src/fb_true24.c
+--- iterm-0.5/unix/fbiterm/src/fb_true24.c	2007-09-10 10:02:22.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb_true24.c	2007-09-10 09:55:51.000000000 +0200
+@@ -216,6 +216,7 @@
+   unsigned char *bits;
+   char *dst;
+   mbstate_t ps;
++  TermFont *font = pIterm->bold ? pIterm->mb_font : pIterm->asc_font;
+ 
+   if (pIterm->lock)
+     return;
+@@ -253,13 +254,13 @@
+ 	  if (len == 1 && mbstring[i] < 0x7f)
+ 	    {
+ 	      codepoint = (int) (mbstring[i] & 0x000000ff);
+-	      bits = get_glyph (pIterm->asc_font, codepoint, &height);
++	      bits = get_glyph (font, codepoint, &height);
+ 	      w = pIterm->asc_font->cell_width;
+ 	    }
+ 	  else
+ 	    {
+ 	      mbrtowc (&wc, (char *) &mbstring[i], len, 0);
+-	      bits = get_glyph (pIterm->mb_font, wc, &height);
++	      bits = get_glyph (font, wc, &height);
+ 	      wlen = wcwidth (wc);
+ 	      w = pIterm->asc_font->cell_width * (wlen > 0 ? wlen : 1);
+ 	    }
+diff -Nru iterm-0.5/unix/fbiterm/src/fb_true32.c iterm-0.5.new/unix/fbiterm/src/fb_true32.c
+--- iterm-0.5/unix/fbiterm/src/fb_true32.c	2007-09-10 10:02:22.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb_true32.c	2007-09-10 09:56:40.000000000 +0200
+@@ -180,6 +180,7 @@
+   unsigned char *bits;
+   char *dst;
+   mbstate_t ps;
++  TermFont *font = pIterm->bold ? pIterm->mb_font : pIterm->asc_font;
+ 
+   if (pIterm->lock)
+     return;
+@@ -217,13 +218,13 @@
+ 	  if (len == 1 && mbstring[i] < 0x7f)
+ 	    {
+ 	      codepoint = (int) (mbstring[i] & 0x000000ff);
+-	      bits = get_glyph (pIterm->asc_font, codepoint, &height);
++	      bits = get_glyph (font, codepoint, &height);
+ 	      w = pIterm->asc_font->cell_width;
+ 	    }
+ 	  else
+ 	    {
+ 	      mbrtowc (&wc, (char *) &mbstring[i], len, 0);
+-	      bits = get_glyph (pIterm->mb_font, wc, &height);
++	      bits = get_glyph (font, wc, &height);
+ 	      wlen = wcwidth (wc);
+ 	      w = pIterm->asc_font->cell_width * (wlen > 0 ? wlen : 1);
+ 	    }
+diff -Nru iterm-0.5/unix/fbiterm/src/fb_true8.c iterm-0.5.new/unix/fbiterm/src/fb_true8.c
+--- iterm-0.5/unix/fbiterm/src/fb_true8.c	2007-09-10 10:02:22.000000000 +0200
++++ iterm-0.5.new/unix/fbiterm/src/fb_true8.c	2007-09-10 10:03:14.000000000 +0200
+@@ -133,6 +133,7 @@
+   unsigned char *bits;
+   char *dst;
+   mbstate_t ps;
++  TermFont *font = pIterm->bold ? pIterm->mb_font : pIterm->asc_font;
+ 
+   if (pIterm->lock)
+     return;
+@@ -170,13 +171,13 @@
+ 	  if (len == 1 && mbstring[i] < 0x7f)
+ 	    {
+ 	      codepoint = (int) (mbstring[i] & 0x000000ff);
+-	      bits = get_glyph (pIterm->asc_font, codepoint, &height);
++	      bits = get_glyph (font, codepoint, &height);
+ 	      w = pIterm->asc_font->cell_width;
+ 	    }
+ 	  else
+ 	    {
+ 	      mbrtowc (&wc, (char *) &mbstring[i], len, 0);
+-	      bits = get_glyph (pIterm->mb_font, wc, &height);
++	      bits = get_glyph (font, wc, &height);
+ 	      wlen = wcwidth (wc);
+ 	      w = pIterm->asc_font->cell_width * (wlen > 0 ? wlen : 1);
+ 	    }
