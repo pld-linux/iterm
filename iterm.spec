@@ -1,9 +1,12 @@
-# TODO: xorg reqs
+#
+# Conditional build:
+%bcond_without	static_libs	# don't build static libraries
+#
 Summary:	Internationalized Terminal Emulator Framework
 Summary(pl.UTF-8):	Szkielet dla umiędzynarodowionego emulatora terminala
 Name:		iterm
 Version:	0.5
-Release:	5
+Release:	6
 License:	Common Public License v0.5
 Group:		Applications
 Source0:	http://www.doc.ic.ac.uk/~mbt99/Y/src/%{name}-%{version}-mbt.tar.gz
@@ -16,6 +19,8 @@ Patch2:		%{name}-fb-scroll.patch
 Patch3:		%{name}-terminfo.patch
 Patch4:		%{name}-fb-direct.patch
 Patch5:		%{name}-gcc4.patch
+Patch6:		%{name}-fb-bold_font.patch
+Patch7:		%{name}-fb-direct16.patch
 URL:		http://www-124.ibm.com/linux/projects/iterm/
 BuildRequires:	autoconf >= 2.53
 BuildRequires:	automake
@@ -188,6 +193,8 @@ ale działa jako minimalny emulator terminala.
 %patch3 -p1
 %patch4 -p1
 %patch5 -p1
+%patch6 -p1
+%patch7 -p1
 
 %build
 # libiterm
@@ -201,7 +208,8 @@ cd lib
 %configure \
 	--disable-pls \
 	--enable-fribidi \
-	--with-utempter
+	--with-utempter \
+	%{!?with_static_libs:--disable-static}
 %{__make}
 
 # libXiterm
@@ -211,7 +219,8 @@ cd ../unix/Xaw/lib
 %{__autoconf}
 %{__autoheader}
 %{__automake}
-%configure
+%configure \
+	%{!?with_static_libs:--disable-static}
 %{__make}
 
 # Xiterm
@@ -299,9 +308,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libiterm.la
 %{_includedir}/iterm
 
+%if %{with static_libs}
 %files -n libiterm-static
 %defattr(644,root,root,755)
 %{_libdir}/libiterm.a
+%endif
 
 %files -n libXiterm
 %defattr(644,root,root,755)
@@ -316,9 +327,11 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/libXiterm.la
 %{_includedir}/Iterm*.h
 
+%if %{with static_libs}
 %files -n libXiterm-static
 %defattr(644,root,root,755)
 %{_libdir}/libXiterm.a
+%endif
 
 %files Xaw
 %defattr(644,root,root,755)
