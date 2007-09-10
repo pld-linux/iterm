@@ -1,0 +1,69 @@
+diff -Nru -x '*.o' iterm-0.5/unix/fbiterm/src/fb_true16.c iterm-0.5.new2/unix/fbiterm/src/fb_true16.c
+--- iterm-0.5/unix/fbiterm/src/fb_true16.c	2007-09-10 11:26:44.000000000 +0200
++++ iterm-0.5.new2/unix/fbiterm/src/fb_true16.c	2007-09-10 11:23:55.000000000 +0200
+@@ -10,11 +10,10 @@
+ #include "fbiterm.h"
+ #include "palette.h"
+ 
+-static unsigned short cfb16[256];
+-static unsigned short fgcmap;
+-static unsigned short bgcmap;
+-static unsigned short boldcmap;
+-
++static __u16 cfb16[256];
++static __u16 fgcmap;
++static __u16 bgcmap;
++static __u16 boldcmap;
+ 
+ void
+ fb_true16_set_palette_true ()
+@@ -42,21 +41,18 @@
+   return;
+ }
+ 
+-
+ void
+ fb_true16_set_palette ()
+ {
+-  int i;
+-  unsigned int red, green, blue;
+-
+-  for (i = 0; i < 31; i++)
++  unsigned int i;
++  for (i = 0; i < 256; i++)
+     {
+-      __u16 val = (i << 11) | (i << 5) | i;
++      __u16 val = (i << 10) | (i << 5) | i;
++
+       cfb16[i] = val;
+     }
+   fgcmap = cfb16[7];
+   bgcmap = cfb16[0];
+-  return;
+ }
+ 
+ void
+@@ -184,16 +180,19 @@
+ 	  else
+ 	    {
+ 	      if (c & 0x80000000)
+-		{
++	    {
++#if 0
+ 		  if (pIterm->bold || pIterm->blink)
+-		    *(dst16) = boldcmap;
++		    *(dst32) = boldcmap;
+ 		  else
+ 		    {
+ 		      if (getenv ("ITERM_BOLD") != NULL)
+-			*(dst16) = boldcmap;
++			*(dst32) = boldcmap;
+ 		      else
+-			*(dst16) = fgcmap;
++			*(dst32) = fgcmap;
+ 		    }
++#endif
++                  *(dst16) = fgcmap;
+ 		}
+ 	      else
+ 		{
